@@ -2,10 +2,10 @@ import type { Subprocess } from 'bun';
 import { $ } from 'bun';
 import { contract, farmerSigner, getContractData, send, } from './utils';
 
-import { SorobanRpc } from '@stellar/stellar-sdk'
+import { Keypair, SorobanRpc } from '@stellar/stellar-sdk'
 
 const STAKE_AMOUNT = '0_0100000'
-const ZERO_COUNT = 8;
+const ZERO_COUNT = 7;
 
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
 let prev_index: number | undefined
@@ -43,9 +43,11 @@ async function run() {
         worked = false
         errors = 0
 
-        for await (let line of $`bun run ./harvest`.lines()) {
-            Bun.write(Bun.stdout, line);
-        }
+        Bun.spawn(["bun", "harvest.ts"], {
+            ipc(message) {
+                console.log(message);
+            },
+        });
     }
 
     if (index && entropy && !proc) {
@@ -97,8 +99,9 @@ async function bootProc(index: number, entropy: string) {
 
     proc = Bun.spawn([
         '../target/release/kale-farmer',
+        '--farmer-hex', Keypair.fromPublicKey(Bun.env.FARMER_PK!).rawPublicKey().toString('hex'),
         '--index', index.toString(),
-        '--entropy', entropy,
+        '--entropy-hex', entropy,
         '--min-zeros', ZERO_COUNT.toString()
     ], { stdout: 'pipe' })
 
@@ -108,6 +111,8 @@ async function bootProc(index: number, entropy: string) {
         await readStream(reader);
     }
 }
+
+// TODO interrupt hashing if we get a new index
 
 async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {
     while (true) {

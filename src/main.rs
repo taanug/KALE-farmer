@@ -11,13 +11,17 @@ const BATCH_SIZE_U64: u64 = BATCH_SIZE as u64;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// Farmer address (as hex string)
+    #[arg(short, long)]
+    farmer_hex: String,
+
     /// Block index
     #[arg(short, long)]
     index: u32,
 
     /// Previous block hash (hex string)
     #[arg(short, long)]
-    entropy: String,
+    entropy_hex: String,
 
     /// Number of leading zeros required
     #[arg(short, long)]
@@ -35,8 +39,9 @@ fn main() {
 
     let args = Args::parse();
 
+    let farmer: [u8; 32] = hex::decode(args.farmer_hex).unwrap().try_into().unwrap();
     let index = args.index;
-    let entropy: [u8; 32] = hex::decode(args.entropy).unwrap().try_into().unwrap();
+    let entropy: [u8; 32] = hex::decode(args.entropy_hex).unwrap().try_into().unwrap();
     let min_zeros = args.min_zeros;
 
     let num_threads = num_cpus::get() - 2;
@@ -45,16 +50,9 @@ fn main() {
 
     let mut hash_array = [0; 84];
 
-    // TODO miner arg needs to be dynamic
-
-    let miner = [
-        230, 176, 128, 57, 227, 78, 11, 209, 32, 158, 142, 132, 67, 186, 160, 200, 27, 223, 43, 48,
-        123, 4, 44, 51, 19, 36, 162, 64, 141, 139, 60, 248,
-    ];
-
     hash_array[..4].copy_from_slice(&index.to_be_bytes());
     hash_array[20..20 + 32].copy_from_slice(&entropy);
-    hash_array[52..].copy_from_slice(&miner);
+    hash_array[52..].copy_from_slice(&farmer);
 
     // Spawn worker threads
     for thread_nonce in 0..num_threads {

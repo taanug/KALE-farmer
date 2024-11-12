@@ -28,6 +28,7 @@ async function runHarvest(index: number) {
     if (!SorobanRpc.Api.isSimulationError(at.simulation!)) {
         await send(at)
         console.log('Successfully harvested', index);
+        process.send?.(`Successfully harvested ${index}`);
     }
 
     index--;
