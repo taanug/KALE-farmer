@@ -31,49 +31,62 @@ if (typeof window !== 'undefined') {
 
 
 export const networks = {
-  unknown: {
-    networkPassphrase: "Public Global Stellar Network ; September 2015",
-    contractId: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
+  testnet: {
+    networkPassphrase: "Test SDF Network ; September 2015",
+    contractId: "CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ",
   }
 } as const
 
 export const Errors = {
-  1: {message:"AlreadyDiscovered"},
+  1: {message:"HomesteadExists"},
 
-  2: {message:"HomesteadNotFound"},
+  2: {message:"HomesteadMissing"},
 
-  3: {message:"PailAmountTooLow"},
+  3: {message:"AssetAdminInvalid"},
 
-  4: {message:"AlreadyHasPail"},
+  4: {message:"FarmPaused"},
 
-  5: {message:"FarmIsPaused"},
+  5: {message:"FarmNotPaused"},
 
-  6: {message:"HashIsInvalid"},
+  6: {message:"PlantAmountTooLow"},
 
-  7: {message:"BlockNotFound"},
+  7: {message:"ZeroCountTooLow"},
 
-  8: {message:"HarvestNotReady"},
+  8: {message:"PailExists"},
 
-  9: {message:"KaleNotFound"},
+  9: {message:"PailMissing"},
 
-  10: {message:"PailNotFound"},
+  10: {message:"WorkMissing"},
 
-  11: {message:"ZeroCountTooLow"},
+  11: {message:"BlockMissing"},
 
-  12: {message:"AssetAdminMismatch"},
+  12: {message:"HashInvalid"},
 
-  13: {message:"FarmIsNotPaused"}
+  13: {message:"HarvestNotReady"}
 }
 
 export interface Block {
   entropy: Buffer;
-  pow_zeros: i128;
-  reclaimed: u64;
-  staked: u64;
+  max_gap: u32;
+  max_stake: i128;
+  max_zeros: u32;
+  min_gap: u32;
+  min_stake: i128;
+  min_zeros: u32;
+  normalized_total: i128;
+  staked_total: i128;
   timestamp: u64;
 }
 
-export type Storage = {tag: "Homesteader", values: void} | {tag: "HomesteadAsset", values: void} | {tag: "FarmIndex", values: void} | {tag: "FarmEntropy", values: void} | {tag: "FarmPaused", values: void} | {tag: "Block", values: readonly [u32]} | {tag: "Pail", values: readonly [string, u32]};
+
+export interface Pail {
+  gap: Option<u32>;
+  sequence: u32;
+  stake: i128;
+  zeros: Option<u32>;
+}
+
+export type Storage = {tag: "Homesteader", values: void} | {tag: "HomesteadAsset", values: void} | {tag: "FarmIndex", values: void} | {tag: "FarmBlock", values: void} | {tag: "FarmPaused", values: void} | {tag: "Block", values: readonly [u32]} | {tag: "Pail", values: readonly [string, u32]};
 
 
 export interface Client {
@@ -135,7 +148,7 @@ export interface Client {
      * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
      */
     simulate?: boolean;
-  }) => Promise<AssembledTransaction<null>>
+  }) => Promise<AssembledTransaction<i128>>
 
   /**
    * Construct and simulate a homestead transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -223,21 +236,22 @@ export class Client extends ContractClient {
     super(
       new ContractSpec([ "AAAAAAAAAAAAAAAFcGxhbnQAAAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
         "AAAAAAAAAAAAAAAEd29yawAAAAMAAAAAAAAABmZhcm1lcgAAAAAAEwAAAAAAAAAEaGFzaAAAA+4AAAAgAAAAAAAAAAVub25jZQAAAAAAAAoAAAAA",
-        "AAAAAAAAAAAAAAAHaGFydmVzdAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABWluZGV4AAAAAAAABAAAAAA=",
+        "AAAAAAAAAAAAAAAHaGFydmVzdAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABWluZGV4AAAAAAAABAAAAAEAAAAL",
         "AAAAAAAAAAAAAAAJaG9tZXN0ZWFkAAAAAAAAAgAAAAAAAAAGZmFybWVyAAAAAAATAAAAAAAAAAVhc3NldAAAAAAAABMAAAAA",
         "AAAAAAAAAAAAAAAHdXBncmFkZQAAAAABAAAAAAAAAARoYXNoAAAD7gAAACAAAAAA",
         "AAAAAAAAAAAAAAAFcGF1c2UAAAAAAAAAAAAAAA==",
         "AAAAAAAAAAAAAAAHdW5wYXVzZQAAAAAAAAAAAA==",
-        "AAAABAAAAAAAAAAAAAAABkVycm9ycwAAAAAADQAAAAAAAAARQWxyZWFkeURpc2NvdmVyZWQAAAAAAAABAAAAAAAAABFIb21lc3RlYWROb3RGb3VuZAAAAAAAAAIAAAAAAAAAEFBhaWxBbW91bnRUb29Mb3cAAAADAAAAAAAAAA5BbHJlYWR5SGFzUGFpbAAAAAAABAAAAAAAAAAMRmFybUlzUGF1c2VkAAAABQAAAAAAAAANSGFzaElzSW52YWxpZAAAAAAAAAYAAAAAAAAADUJsb2NrTm90Rm91bmQAAAAAAAAHAAAAAAAAAA9IYXJ2ZXN0Tm90UmVhZHkAAAAACAAAAAAAAAAMS2FsZU5vdEZvdW5kAAAACQAAAAAAAAAMUGFpbE5vdEZvdW5kAAAACgAAAAAAAAAPWmVyb0NvdW50VG9vTG93AAAAAAsAAAAAAAAAEkFzc2V0QWRtaW5NaXNtYXRjaAAAAAAADAAAAAAAAAAPRmFybUlzTm90UGF1c2VkAAAAAA0=",
-        "AAAAAQAAAAAAAAAAAAAABUJsb2NrAAAAAAAABQAAAAAAAAAHZW50cm9weQAAAAPuAAAAIAAAAAAAAAAJcG93X3plcm9zAAAAAAAACwAAAAAAAAAJcmVjbGFpbWVkAAAAAAAABgAAAAAAAAAGc3Rha2VkAAAAAAAGAAAAAAAAAAl0aW1lc3RhbXAAAAAAAAAG",
-        "AAAAAgAAAAAAAAAAAAAAB1N0b3JhZ2UAAAAABwAAAAAAAAAAAAAAC0hvbWVzdGVhZGVyAAAAAAAAAAAAAAAADkhvbWVzdGVhZEFzc2V0AAAAAAAAAAAAAAAAAAlGYXJtSW5kZXgAAAAAAAAAAAAAAAAAAAtGYXJtRW50cm9weQAAAAAAAAAAAAAAAApGYXJtUGF1c2VkAAAAAAABAAAAAAAAAAVCbG9jawAAAAAAAAEAAAAEAAAAAQAAAAAAAAAEUGFpbAAAAAIAAAATAAAABA==" ]),
+        "AAAABAAAAAAAAAAAAAAABkVycm9ycwAAAAAADQAAAAAAAAAPSG9tZXN0ZWFkRXhpc3RzAAAAAAEAAAAAAAAAEEhvbWVzdGVhZE1pc3NpbmcAAAACAAAAAAAAABFBc3NldEFkbWluSW52YWxpZAAAAAAAAAMAAAAAAAAACkZhcm1QYXVzZWQAAAAAAAQAAAAAAAAADUZhcm1Ob3RQYXVzZWQAAAAAAAAFAAAAAAAAABFQbGFudEFtb3VudFRvb0xvdwAAAAAAAAYAAAAAAAAAD1plcm9Db3VudFRvb0xvdwAAAAAHAAAAAAAAAApQYWlsRXhpc3RzAAAAAAAIAAAAAAAAAAtQYWlsTWlzc2luZwAAAAAJAAAAAAAAAAtXb3JrTWlzc2luZwAAAAAKAAAAAAAAAAxCbG9ja01pc3NpbmcAAAALAAAAAAAAAAtIYXNoSW52YWxpZAAAAAAMAAAAAAAAAA9IYXJ2ZXN0Tm90UmVhZHkAAAAADQ==",
+        "AAAAAQAAAAAAAAAAAAAABUJsb2NrAAAAAAAACgAAAAAAAAAHZW50cm9weQAAAAPuAAAAIAAAAAAAAAAHbWF4X2dhcAAAAAAEAAAAAAAAAAltYXhfc3Rha2UAAAAAAAALAAAAAAAAAAltYXhfemVyb3MAAAAAAAAEAAAAAAAAAAdtaW5fZ2FwAAAAAAQAAAAAAAAACW1pbl9zdGFrZQAAAAAAAAsAAAAAAAAACW1pbl96ZXJvcwAAAAAAAAQAAAAAAAAAEG5vcm1hbGl6ZWRfdG90YWwAAAALAAAAAAAAAAxzdGFrZWRfdG90YWwAAAALAAAAAAAAAAl0aW1lc3RhbXAAAAAAAAAG",
+        "AAAAAQAAAAAAAAAAAAAABFBhaWwAAAAEAAAAAAAAAANnYXAAAAAD6AAAAAQAAAAAAAAACHNlcXVlbmNlAAAABAAAAAAAAAAFc3Rha2UAAAAAAAALAAAAAAAAAAV6ZXJvcwAAAAAAA+gAAAAE",
+        "AAAAAgAAAAAAAAAAAAAAB1N0b3JhZ2UAAAAABwAAAAAAAAAAAAAAC0hvbWVzdGVhZGVyAAAAAAAAAAAAAAAADkhvbWVzdGVhZEFzc2V0AAAAAAAAAAAAAAAAAAlGYXJtSW5kZXgAAAAAAAAAAAAAAAAAAAlGYXJtQmxvY2sAAAAAAAAAAAAAAAAAAApGYXJtUGF1c2VkAAAAAAABAAAAAAAAAAVCbG9jawAAAAAAAAEAAAAEAAAAAQAAAAAAAAAEUGFpbAAAAAIAAAATAAAABA==" ]),
       options
     )
   }
   public readonly fromJSON = {
     plant: this.txFromJSON<null>,
         work: this.txFromJSON<null>,
-        harvest: this.txFromJSON<null>,
+        harvest: this.txFromJSON<i128>,
         homestead: this.txFromJSON<null>,
         upgrade: this.txFromJSON<null>,
         pause: this.txFromJSON<null>,

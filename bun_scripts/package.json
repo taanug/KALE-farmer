@@ -2,6 +2,12 @@
   "name": "bun_tests",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "paw": "bun run plant_and_work.ts",
+    "paw:testnet": "bun run --env-file=.env.testnet plant_and_work.ts",
+    "harvest": "bun run harvest.ts",
+    "harvest:testnet": "bun run --env-file=.env.testnet harvest.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -9,7 +15,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^12.3.0",
+    "@stellar/stellar-sdk": "^13.0.0",
     "kale-sc-sdk": "file:./kale-sc-sdk"
   }
 }

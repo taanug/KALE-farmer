@@ -1,11 +1,7 @@
 import type { Subprocess } from 'bun';
-import { $ } from 'bun';
-import { contract, farmerSigner, getContractData, send, } from './utils';
-
-import { Keypair, SorobanRpc } from '@stellar/stellar-sdk'
-
-const STAKE_AMOUNT = '0_0100000'
-const ZERO_COUNT = 7;
+import { contract, farmerSigner, getContractData, send } from './utils';
+import { Keypair } from '@stellar/stellar-sdk'
+import { Api } from '@stellar/stellar-sdk/rpc';
 
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
 let prev_index: number | undefined
@@ -24,14 +20,14 @@ async function run() {
     }
 
     const { index, entropy, timestamp } = await getContractData()
-
+    
     const timeDiff = timestamp ? timestamp.getTime() - new Date().getTime() : 0;
     const minutes = Math.floor(Math.abs(timeDiff) / 60000);
     const seconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
     console.log('Running...', `${minutes}m ${seconds}s`);
 
     if (index !== prev_index) {
-        console.log(index, entropy);
+        console.log(index, entropy, timestamp);
 
         if (proc) {
             proc.kill()
@@ -67,20 +63,21 @@ async function bootProc(index: number, entropy: string) {
         // TODO more dynamic stake amount
 
         const at = await contract.plant({
-            farmer: Bun.env.FARMER_PK!,
-            amount: BigInt(STAKE_AMOUNT.replace(/\D/gm, ''))
+            farmer: Bun.env.FARMER_PK,
+            amount: BigInt(Bun.env.STAKE_AMOUNT)
         })
 
-        if (SorobanRpc.Api.isSimulationError(at.simulation!)) {
-            if (at.simulation.error.includes('Error(Contract, #4)')) {
+        if (Api.isSimulationError(at.simulation!)) {
+            if (at.simulation.error.includes('Error(Contract, #8)')) {
                 console.log('Already planted');
             } else {
+                console.error(at.simulation.error);
                 errors++
                 return;
             }
         } else {
             await at.signAuthEntries({
-                publicKey: Bun.env.FARMER_PK!,
+                address: Bun.env.FARMER_PK,
                 signAuthEntry: farmerSigner.signAuthEntry
             })
 
@@ -95,14 +92,14 @@ async function bootProc(index: number, entropy: string) {
     if (proc || worked)
         return
 
-    // TODO once 7 succeeds try for 8
+    // TODO once set `Bun.env.ZERO_COUNT` succeeds try for N+1
 
     proc = Bun.spawn([
         '../target/release/kale-farmer',
-        '--farmer-hex', Keypair.fromPublicKey(Bun.env.FARMER_PK!).rawPublicKey().toString('hex'),
+        '--farmer-hex', Keypair.fromPublicKey(Bun.env.FARMER_PK).rawPublicKey().toString('hex'),
         '--index', index.toString(),
         '--entropy-hex', entropy,
-        '--min-zeros', ZERO_COUNT.toString()
+        '--min-zeros', Bun.env.ZERO_COUNT.toString(),
     ], { stdout: 'pipe' })
 
     if (proc) {
@@ -112,7 +109,7 @@ async function bootProc(index: number, entropy: string) {
     }
 }
 
-// TODO interrupt hashing if we get a new index
+// TODO interrupt hashing if we get a new index (right now we only look for the next index once current work is finished)
 
 async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {
     while (true) {
@@ -131,15 +128,16 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
             // TODO lookup Pail storage item before calling the below
 
             const at = await contract.work({
-                farmer: Bun.env.FARMER_PK!,
+                farmer: Bun.env.FARMER_PK,
                 hash: Buffer.from(hash, 'hex'),
                 nonce: BigInt(nonce),
             })
 
-            if (SorobanRpc.Api.isSimulationError(at.simulation!)) {
-                if (at.simulation.error.includes('Error(Contract, #11)')) {
+            if (Api.isSimulationError(at.simulation!)) {
+                if (at.simulation.error.includes('Error(Contract, #7)')) {
                     console.log('Already worked');
                 } else {
+                    console.error(at.simulation.error);
                     errors++
                     return;
                 }

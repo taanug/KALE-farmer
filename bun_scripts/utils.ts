@@ -1,6 +1,7 @@
-import { Keypair, Networks, scValToNative, SorobanRpc, xdr } from "@stellar/stellar-sdk";
+import { Keypair, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import type { Tx } from "@stellar/stellar-sdk/contract";
+import { Durability, Server } from "@stellar/stellar-sdk/rpc";
 import { Client } from 'kale-sc-sdk';
 
 interface Block {
@@ -11,13 +12,13 @@ interface Block {
     timestamp: bigint,
 }
 
-export const rpc = new SorobanRpc.Server(Bun.env.RPC_URL!);
-export const farmerSigner = basicNodeSigner(Keypair.fromSecret(Bun.env.FARMER_SK!), Networks.PUBLIC)
+export const rpc = new Server(Bun.env.RPC_URL);
+export const farmerSigner = basicNodeSigner(Keypair.fromSecret(Bun.env.FARMER_SK), Bun.env.NETWORK_PASSPHRASE)
 
 export const contract = new Client({
-    rpcUrl: Bun.env.RPC_URL!,
-    contractId: Bun.env.CONTRACT_ID!,
-    networkPassphrase: Networks.PUBLIC
+    rpcUrl: Bun.env.RPC_URL,
+    contractId: Bun.env.CONTRACT_ID,
+    networkPassphrase: Bun.env.NETWORK_PASSPHRASE,
 })
 
 export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: number) {
@@ -34,7 +35,7 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
     if (fee)
         data.set('fee', fee.toString());
 
-    return fetch(Bun.env.LAUNCHTUBE_URL!, {
+    return fetch(Bun.env.LAUNCHTUBE_URL, {
         method: 'POST',
         headers: {
             authorization: `Bearer ${Bun.env.LAUNCHTUBE_JWT}`,
@@ -48,13 +49,13 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
 }
 
 export async function getContractData() {
-    let index: number | undefined;
-    let entropy: string | undefined;
-    let timestamp: Date | undefined;
+    let index: number = 0;
+    let entropy: string = Buffer.alloc(32).toString('hex');
+    let timestamp: Date = new Date(0);
 
     try {
         await rpc.getContractData(
-            Bun.env.CONTRACT_ID!,
+            Bun.env.CONTRACT_ID,
             xdr.ScVal.scvLedgerKeyContractInstance()
         ).then(({ val }) =>
             val.contractData()
@@ -71,10 +72,10 @@ export async function getContractData() {
             })
         })
 
-        await rpc.getContractData(Bun.env.CONTRACT_ID!, xdr.ScVal.scvVec([
+        await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
             xdr.ScVal.scvSymbol('Block'),
             xdr.ScVal.scvU32(Number(index))
-        ]), SorobanRpc.Durability.Temporary)
+        ]), Durability.Temporary)
             .then(({ val }) => {
                 const block: Block = scValToNative(val.contractData().val())
                 entropy = block.entropy.toString('hex')
