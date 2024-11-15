@@ -17,6 +17,13 @@ interface Block {
     normalized_total: bigint,
 }
 
+interface Pail {
+    sequence: bigint,
+    gap: bigint | undefined,
+    stake: bigint,
+    zeros: bigint | undefined,
+}
+
 export const rpc = new Server(Bun.env.RPC_URL);
 export const farmerSigner = basicNodeSigner(Keypair.fromSecret(Bun.env.FARMER_SK), Bun.env.NETWORK_PASSPHRASE)
 
