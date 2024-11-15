@@ -2,13 +2,13 @@
 
 ### Step 1: Install Rust
 
-https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
+> https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
 
 ### Step 2: Run `make build`
 
 ### Step 3: Install Bun
 
-https://bun.sh
+> https://bun.sh
 
 ### Step 4: Run `bun install`
 
@@ -20,7 +20,7 @@ _Optional if you want to contribute to the project_
 
 ### Install the Stellar CLI
 
-https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
+> https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
 
 ### Add a `mainnet` network to the Stellar CLI
 
@@ -40,7 +40,7 @@ make bindings-mainnet
 # 2. copy `./bun_scripts/kale-sc-sdk__raw/src/index.ts` to `./bun_scripts/kale-sc-sdk/src/index.ts`
 ```
 
-Once you've done steps 1 and 2 above
+> Once you've done steps 1 and 2 above
 
 ```bash
 cd ./bun_scripts/kale-sc-sdk
