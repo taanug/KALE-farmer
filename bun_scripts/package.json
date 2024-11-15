@@ -3,8 +3,8 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "paw": "bun run plant_and_work.ts",
-    "paw:testnet": "bun run --env-file=.env.testnet plant_and_work.ts",
+    "farm": "bun run plant_and_work.ts",
+    "farm:testnet": "bun run --env-file=.env.testnet plant_and_work.ts",
     "harvest": "bun run harvest.ts",
     "harvest:testnet": "bun run --env-file=.env.testnet harvest.ts"
   },
