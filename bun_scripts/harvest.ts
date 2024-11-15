@@ -32,6 +32,6 @@ async function runHarvest(index: number) {
 
     index--;
 
-    if (index >= await readINDEX() && index >= 0 && index >= START_INDEX - 100)
+    if (index >= await readINDEX() && index >= 0 && index >= START_INDEX - 288) // 24 hours of 5 minute blocks
         return runHarvest(index)
 }
