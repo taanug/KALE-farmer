@@ -11,10 +11,6 @@ const BATCH_SIZE_U64: u64 = BATCH_SIZE as u64;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Farmer address (as hex string)
-    #[arg(short, long)]
-    farmer_hex: String,
-
     /// Block index
     #[arg(short, long)]
     index: u32,
@@ -22,6 +18,10 @@ struct Args {
     /// Previous block hash (hex string)
     #[arg(short, long)]
     entropy_hex: String,
+
+    /// Farmer address (as hex string)
+    #[arg(short, long)]
+    farmer_hex: String,
 
     /// Number of leading zeros required
     #[arg(short, long)]
@@ -39,9 +39,9 @@ fn main() {
 
     let args = Args::parse();
 
-    let farmer: [u8; 32] = hex::decode(args.farmer_hex).unwrap().try_into().unwrap();
     let index = args.index;
     let entropy: [u8; 32] = hex::decode(args.entropy_hex).unwrap().try_into().unwrap();
+    let farmer: [u8; 32] = hex::decode(args.farmer_hex).unwrap().try_into().unwrap();
     let min_zeros = args.min_zeros;
 
     let num_threads = num_cpus::get() - 2;
@@ -72,7 +72,6 @@ fn main() {
 
                     if check_difficulty(&hash, min_zeros) {
                         println!("[{}, \"{}\"]", nonce, hex::encode(hash));
-                        counter.fetch_add(1, Ordering::Relaxed); // Count the final hash
                         std::process::exit(0);
                     }
 
