@@ -1,25 +1,35 @@
 import type { Subprocess } from 'bun';
-import { contract, farmerSigner, getContractData, send } from './utils';
+import { contract, farmerSigner, getContractData, send, type Block, type Pail } from './utils';
 import { Keypair } from '@stellar/stellar-sdk'
 import { Api } from '@stellar/stellar-sdk/rpc';
 
+let contractData: { index: number, block: Block | undefined, pail: Pail | undefined }
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
 let prev_index: number | undefined
+let booting = false
 let planted = false
 let worked = false
 let errors = 0
 
 // TODO We have timestamps, we don't need to look every 5 seconds we can wait till the next block
 
+contractData = await getContractData()
 run()
+
+setInterval(async () => {
+    contractData = await getContractData()
+    run()
+}, 5000)
 
 async function run() {
     if (errors > 10) {
         console.log('Too many errors, exiting');
-        return
+        process.exit(1);
     }
 
-    const { index, block, pail } = await getContractData();
+    // TODO might be able to slim up `getContractData` calls to only index until there's definitely a new block
+
+    const { index, block, pail } = contractData;
     const entropy = block ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
     const timestamp = block ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
 
@@ -39,7 +49,7 @@ async function run() {
 
         prev_index = index
         planted = !!pail?.sequence || !!pail?.stake
-        worked = false // !!pail?.gap || !!pail?.zeros
+        worked = !!pail?.gap || !!pail?.zeros
         errors = 0
 
         Bun.spawn(["bun", "harvest.ts"], {
@@ -49,13 +59,16 @@ async function run() {
         });
     }
 
-    if (!proc && (!planted || !worked)) {
-        await bootProc(index, entropy)
+    if (!booting && !proc && (!planted || !worked)) {
+        try {
+            booting = true;
+            await bootProc(index, entropy)
+        } catch (err) {
+            console.error('Boot Error:', err);
+        } finally {
+            booting = false;
+        }
     }
-
-    await Bun.sleep(5000)
-
-    run()
 }
 
 async function bootProc(index: number, entropy: string) {
@@ -111,8 +124,6 @@ async function bootProc(index: number, entropy: string) {
         await readStream(reader);
     }
 }
-
-// TODO interrupt hashing if we get a new index (right now we only look for the next index once current work is finished)
 
 async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {
     while (true) {

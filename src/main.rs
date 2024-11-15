@@ -95,7 +95,7 @@ fn main() {
             let mut last_time = Instant::now();
 
             loop {
-                thread::sleep(Duration::from_secs(2));
+                thread::sleep(Duration::from_secs(5));
 
                 let current = counter.load(Ordering::Relaxed);
                 let elapsed = last_time.elapsed().as_secs_f64();

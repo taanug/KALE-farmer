@@ -4,7 +4,7 @@ import type { Tx } from "@stellar/stellar-sdk/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/rpc";
 import { Client } from 'kale-sc-sdk';
 
-interface Block {
+export interface Block {
     timestamp: bigint,
     min_gap: bigint,
     min_stake: bigint,
@@ -17,7 +17,7 @@ interface Block {
     normalized_total: bigint,
 }
 
-interface Pail {
+export interface Pail {
     sequence: bigint,
     gap: bigint | undefined,
     stake: bigint,

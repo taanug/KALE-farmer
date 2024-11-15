@@ -4,6 +4,7 @@ import { contract, getContractData, send } from "./utils";
 const env_file = Bun.env.ENV === 'mainnet' ? '.env' : '.env.testnet';
 
 let { index } = await getContractData(true)
+let prev_index: number = Bun.env.INDEX;
 
 await runHarvest(index)
 
@@ -13,7 +14,7 @@ let env = await Bun.file(env_file).text().then((text) =>
 
 await Bun.write(env_file, `${env}\nINDEX=${index}`.trim());
 
-Bun.env.INDEX = index;
+prev_index = index;
 
 async function runHarvest(index: number) {
     console.log('Harvesting', index);
@@ -40,6 +41,6 @@ async function runHarvest(index: number) {
 
     index--;
 
-    if (index >= Bun.env.INDEX && index >= 0)
+    if (index >= prev_index && index >= 0)
         return runHarvest(index)
 }
