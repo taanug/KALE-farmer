@@ -6,7 +6,7 @@ https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup
 ### Step 2: Run `make build`
 
 ### Step 3: Install Bun
-https://bun.sh/
+https://bun.sh
 
 ### Step 4: Run `bun install`
 

@@ -4,6 +4,8 @@ import type { Tx } from "@stellar/stellar-sdk/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/rpc";
 import { Client } from 'kale-sc-sdk';
 
+const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
+
 export interface Block {
     timestamp: bigint,
     min_gap: bigint,
@@ -105,4 +107,18 @@ export async function getContractData(just_index: boolean = false) {
     } catch { }
 
     return { index, block, pail }
+}
+
+export async function readINDEX() {
+    const file = Bun.file(INDEX_filename)
+
+    if (await file.exists()) {
+        return file.text().then((index) => Number(index ?? 0));
+    } else {
+        return 0;
+    }
+}
+
+export async function writeINDEX(index: number) {
+    return Bun.write(INDEX_filename, index.toString());
 }

@@ -1,20 +1,11 @@
 import { Api } from "@stellar/stellar-sdk/rpc";
-import { contract, getContractData, send } from "./utils";
-
-const env_file = Bun.env.ENV === 'mainnet' ? '.env' : '.env.testnet';
+import { contract, getContractData, readINDEX, send, writeINDEX } from "./utils";
 
 let { index } = await getContractData(true)
-let prev_index: number = Bun.env.INDEX;
+let START_INDEX = index;
 
-await runHarvest(index)
-
-let env = await Bun.file(env_file).text().then((text) =>
-    text.split('\n').filter(line => line.trim()).slice(0, -1).join('\n')
-);
-
-await Bun.write(env_file, `${env}\nINDEX=${index}`.trim());
-
-prev_index = index;
+await runHarvest(index);
+await writeINDEX(index);
 
 async function runHarvest(index: number) {
     console.log('Harvesting', index);
@@ -41,6 +32,6 @@ async function runHarvest(index: number) {
 
     index--;
 
-    if (index >= prev_index && index >= 0)
+    if (index >= await readINDEX() && index >= 0 && index >= START_INDEX - 100)
         return runHarvest(index)
 }
