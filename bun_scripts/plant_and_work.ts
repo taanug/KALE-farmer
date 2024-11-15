@@ -71,7 +71,7 @@ async function bootProc(index: number, entropy: string) {
             if (at.simulation.error.includes('Error(Contract, #8)')) {
                 console.log('Already planted');
             } else {
-                console.error(at.simulation.error);
+                console.error('Plant Error:', at.simulation.error);
                 errors++
                 return;
             }
@@ -138,7 +138,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
                 if (at.simulation.error.includes('Error(Contract, #7)')) {
                     console.log('Already worked');
                 } else {
-                    console.error(at.simulation.error);
+                    console.error('Work Error:', at.simulation.error);
                     errors++
                     return;
                 }

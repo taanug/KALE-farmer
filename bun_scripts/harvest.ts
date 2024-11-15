@@ -25,7 +25,9 @@ async function runHarvest(index: number) {
         index
     })
 
-    if (!Api.isSimulationError(at.simulation!)) {
+    if (Api.isSimulationError(at.simulation!)) {
+        console.error('Harvest Error:', at.simulation.error);
+    } else {
         await send(at)
         const reward = Number(at.result - BigInt(Bun.env.STAKE_AMOUNT)) / 1e7;
         console.log('Successfully harvested', index, reward);
