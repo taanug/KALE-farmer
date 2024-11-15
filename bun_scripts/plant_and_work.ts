@@ -19,11 +19,14 @@ async function run() {
         return
     }
 
-    const { index, entropy, timestamp } = await getContractData()
+    const { index, block, pail } = await getContractData();
+    const entropy = block ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
+    const timestamp = block ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
 
-    const timeDiff = timestamp ? timestamp.getTime() - new Date().getTime() : 0;
+    const timeDiff = timestamp.getTime() - new Date().getTime();
     const minutes = Math.floor(Math.abs(timeDiff) / 60000);
     const seconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
+
     console.log('Running...', `${minutes}m ${seconds}s`);
 
     if (index !== prev_index) {
@@ -35,8 +38,8 @@ async function run() {
         }
 
         prev_index = index
-        planted = false
-        worked = false
+        planted = !!pail?.sequence || !!pail?.stake
+        worked = false // !!pail?.gap || !!pail?.zeros
         errors = 0
 
         Bun.spawn(["bun", "harvest.ts"], {
@@ -46,7 +49,7 @@ async function run() {
         });
     }
 
-    if (index && entropy && !proc) {
+    if (!proc && (!planted || !worked)) {
         await bootProc(index, entropy)
     }
 
@@ -59,7 +62,6 @@ async function bootProc(index: number, entropy: string) {
     console.log('Booting...');
 
     if (!planted) {
-        // TODO lookup Pail storage item before calling the below
         // TODO more dynamic stake amount
 
         const at = await contract.plant({
@@ -125,8 +127,6 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
 
         try {
             const [nonce, hash] = JSON.parse(Buffer.from(value).toString('utf-8'))
-
-            // TODO lookup Pail storage item before calling the below
 
             const at = await contract.work({
                 farmer: Bun.env.FARMER_PK,

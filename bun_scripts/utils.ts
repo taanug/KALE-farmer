@@ -1,4 +1,4 @@
-import { Keypair, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Address, Keypair, scValToNative, xdr } from "@stellar/stellar-sdk";
 import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/contract";
 import type { Tx } from "@stellar/stellar-sdk/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/rpc";
@@ -60,10 +60,10 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
     })
 }
 
-export async function getContractData() {
+export async function getContractData(just_index: boolean = false) {
     let index: number = 0;
-    let entropy: string = Buffer.alloc(32).toString('hex');
-    let timestamp: Date = new Date(0);
+    let block: Block | undefined;
+    let pail: Pail | undefined;
 
     try {
         await rpc.getContractData(
@@ -84,18 +84,25 @@ export async function getContractData() {
             })
         })
 
-        await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
-            xdr.ScVal.scvSymbol('Block'),
-            xdr.ScVal.scvU32(Number(index))
-        ]), Durability.Temporary)
-            .then(({ val }) => {
-                const block: Block = scValToNative(val.contractData().val())
-                entropy = block.entropy.toString('hex')
-                timestamp = new Date(Number(block.timestamp * BigInt(1000)))
-            })
-    } catch (err) {
-        console.error(err);
-    }
+        if (!just_index) {
+            await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+                xdr.ScVal.scvSymbol('Block'),
+                xdr.ScVal.scvU32(Number(index))
+            ]), Durability.Temporary)
+                .then(({ val }) => {
+                    block = scValToNative(val.contractData().val())
+                })
 
-    return { index, entropy, timestamp }
+            await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+                xdr.ScVal.scvSymbol('Pail'),
+                Address.fromString(Bun.env.FARMER_PK).toScVal(),
+                xdr.ScVal.scvU32(Number(index))
+            ]), Durability.Temporary)
+                .then(({ val }) => {
+                    pail = scValToNative(val.contractData().val())
+                })
+        }
+    } catch { }
+
+    return { index, block, pail }
 }

@@ -3,7 +3,7 @@ import { contract, getContractData, send } from "./utils";
 
 const env_file = Bun.env.ENV === 'mainnet' ? '.env' : '.env.testnet';
 
-let { index } = await getContractData()
+let { index } = await getContractData(true)
 
 await runHarvest(index)
 
