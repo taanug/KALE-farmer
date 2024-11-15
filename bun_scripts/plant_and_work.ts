@@ -77,7 +77,8 @@ async function bootProc(index: number, entropy: string) {
             }
         } else {
             await at.signAuthEntries({
-                address: Bun.env.FARMER_PK,
+                // address: Bun.env.FARMER_PK,
+                publicKey: Bun.env.FARMER_PK,
                 signAuthEntry: farmerSigner.signAuthEntry
             })
 

@@ -48,11 +48,11 @@ fn main() {
 
     let mut handles = vec![];
 
-    let mut hash_array = [0; 84];
+    let mut hash_array = [0; 76];
 
     hash_array[..4].copy_from_slice(&index.to_be_bytes());
-    hash_array[20..20 + 32].copy_from_slice(&entropy);
-    hash_array[52..].copy_from_slice(&farmer);
+    hash_array[12..44].copy_from_slice(&entropy);
+    hash_array[44..].copy_from_slice(&farmer);
 
     // Spawn worker threads
     for thread_nonce in 0..num_threads {
@@ -63,8 +63,8 @@ fn main() {
 
             loop {
                 // Process entire batch
-                for _ in 0..BATCH_SIZE {
-                    hash_array[4..4 + 16].copy_from_slice(&(nonce as u128).to_be_bytes());
+                for _ in 0..BATCH_SIZE_U64 {
+                    hash_array[4..12].copy_from_slice(&nonce.to_be_bytes());
 
                     let mut keccak = Keccak::v256();
                     keccak.update(&hash_array);

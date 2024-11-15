@@ -31,9 +31,9 @@ if (typeof window !== 'undefined') {
 
 
 export const networks = {
-  testnet: {
-    networkPassphrase: "Test SDF Network ; September 2015",
-    contractId: "CDBG4XY2T5RRPH7HKGZIWMR2MFPLC6RJ453ITXQGNQXG6LNVL4375MRJ",
+  unknown: {
+    networkPassphrase: "Public Global Stellar Network ; September 2015",
+    contractId: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
   }
 } as const
 
@@ -113,7 +113,7 @@ export interface Client {
   /**
    * Construct and simulate a work transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  work: ({farmer, hash, nonce}: {farmer: string, hash: Buffer, nonce: u128}, options?: {
+  work: ({farmer, hash, nonce}: {farmer: string, hash: Buffer, nonce: u64}, options?: {
     /**
      * The fee to pay for the transaction. Default: BASE_FEE
      */
@@ -230,17 +230,38 @@ export interface Client {
     simulate?: boolean;
   }) => Promise<AssembledTransaction<null>>
 
+  /**
+   * Construct and simulate a remove_block transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  remove_block: ({index}: {index: u32}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<null>>
+
 }
 export class Client extends ContractClient {
   constructor(public readonly options: ContractClientOptions) {
     super(
       new ContractSpec([ "AAAAAAAAAAAAAAAFcGxhbnQAAAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
-        "AAAAAAAAAAAAAAAEd29yawAAAAMAAAAAAAAABmZhcm1lcgAAAAAAEwAAAAAAAAAEaGFzaAAAA+4AAAAgAAAAAAAAAAVub25jZQAAAAAAAAoAAAAA",
+        "AAAAAAAAAAAAAAAEd29yawAAAAMAAAAAAAAABmZhcm1lcgAAAAAAEwAAAAAAAAAEaGFzaAAAA+4AAAAgAAAAAAAAAAVub25jZQAAAAAAAAYAAAAA",
         "AAAAAAAAAAAAAAAHaGFydmVzdAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABWluZGV4AAAAAAAABAAAAAEAAAAL",
         "AAAAAAAAAAAAAAAJaG9tZXN0ZWFkAAAAAAAAAgAAAAAAAAAGZmFybWVyAAAAAAATAAAAAAAAAAVhc3NldAAAAAAAABMAAAAA",
         "AAAAAAAAAAAAAAAHdXBncmFkZQAAAAABAAAAAAAAAARoYXNoAAAD7gAAACAAAAAA",
         "AAAAAAAAAAAAAAAFcGF1c2UAAAAAAAAAAAAAAA==",
         "AAAAAAAAAAAAAAAHdW5wYXVzZQAAAAAAAAAAAA==",
+        "AAAAAAAAAAAAAAAMcmVtb3ZlX2Jsb2NrAAAAAQAAAAAAAAAFaW5kZXgAAAAAAAAEAAAAAA==",
         "AAAABAAAAAAAAAAAAAAABkVycm9ycwAAAAAADQAAAAAAAAAPSG9tZXN0ZWFkRXhpc3RzAAAAAAEAAAAAAAAAEEhvbWVzdGVhZE1pc3NpbmcAAAACAAAAAAAAABFBc3NldEFkbWluSW52YWxpZAAAAAAAAAMAAAAAAAAACkZhcm1QYXVzZWQAAAAAAAQAAAAAAAAADUZhcm1Ob3RQYXVzZWQAAAAAAAAFAAAAAAAAABFQbGFudEFtb3VudFRvb0xvdwAAAAAAAAYAAAAAAAAAD1plcm9Db3VudFRvb0xvdwAAAAAHAAAAAAAAAApQYWlsRXhpc3RzAAAAAAAIAAAAAAAAAAtQYWlsTWlzc2luZwAAAAAJAAAAAAAAAAtXb3JrTWlzc2luZwAAAAAKAAAAAAAAAAxCbG9ja01pc3NpbmcAAAALAAAAAAAAAAtIYXNoSW52YWxpZAAAAAAMAAAAAAAAAA9IYXJ2ZXN0Tm90UmVhZHkAAAAADQ==",
         "AAAAAQAAAAAAAAAAAAAABUJsb2NrAAAAAAAACgAAAAAAAAAHZW50cm9weQAAAAPuAAAAIAAAAAAAAAAHbWF4X2dhcAAAAAAEAAAAAAAAAAltYXhfc3Rha2UAAAAAAAALAAAAAAAAAAltYXhfemVyb3MAAAAAAAAEAAAAAAAAAAdtaW5fZ2FwAAAAAAQAAAAAAAAACW1pbl9zdGFrZQAAAAAAAAsAAAAAAAAACW1pbl96ZXJvcwAAAAAAAAQAAAAAAAAAEG5vcm1hbGl6ZWRfdG90YWwAAAALAAAAAAAAAAxzdGFrZWRfdG90YWwAAAALAAAAAAAAAAl0aW1lc3RhbXAAAAAAAAAG",
         "AAAAAQAAAAAAAAAAAAAABFBhaWwAAAAEAAAAAAAAAANnYXAAAAAD6AAAAAQAAAAAAAAACHNlcXVlbmNlAAAABAAAAAAAAAAFc3Rha2UAAAAAAAALAAAAAAAAAAV6ZXJvcwAAAAAAA+gAAAAE",
@@ -255,6 +276,7 @@ export class Client extends ContractClient {
         homestead: this.txFromJSON<null>,
         upgrade: this.txFromJSON<null>,
         pause: this.txFromJSON<null>,
-        unpause: this.txFromJSON<null>
+        unpause: this.txFromJSON<null>,
+        remove_block: this.txFromJSON<null>
   }
 }
