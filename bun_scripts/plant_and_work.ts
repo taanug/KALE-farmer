@@ -33,12 +33,6 @@ async function run() {
     const entropy = block ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
     const timestamp = block ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
 
-    const timeDiff = timestamp.getTime() - new Date().getTime();
-    const minutes = Math.floor(Math.abs(timeDiff) / 60000);
-    const seconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
-
-    console.log('Running...', `${minutes}m ${seconds}s`);
-
     if (index !== prev_index) {
         console.log(index, entropy, timestamp);
 
@@ -57,6 +51,12 @@ async function run() {
                 console.log(message);
             },
         });
+    } else {
+        const timeDiff = timestamp.getTime() - new Date().getTime();
+        const minutes = Math.floor(Math.abs(timeDiff) / 60000);
+        const seconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
+
+        console.log('Running...', `${minutes}m ${seconds}s`);
     }
 
     if (!booting && !proc && (!planted || !worked)) {

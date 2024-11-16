@@ -18,8 +18,9 @@ async function runHarvest(index: number) {
 
     if (Api.isSimulationError(at.simulation!)) {
         if (!(
-            at.simulation.error.includes('Error(Contract, #13)')
-            || at.simulation.error.includes('Error(Contract, #9)')
+            at.simulation.error.includes('Error(Contract, #9)')
+            || at.simulation.error.includes('Error(Contract, #10)')
+            || at.simulation.error.includes('Error(Contract, #13)')
         )) {
             console.error('Harvest Error:', at.simulation.error);
         }
