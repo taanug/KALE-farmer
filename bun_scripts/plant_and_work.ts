@@ -65,6 +65,7 @@ async function run() {
             await bootProc(index, entropy)
         } catch (err) {
             console.error('Boot Error:', err);
+            errors++
         } finally {
             booting = false;
         }
@@ -72,7 +73,7 @@ async function run() {
 }
 
 async function bootProc(index: number, entropy: string) {
-    console.log('Booting...');
+    console.log('Booting...', errors);
 
     if (!planted) {
         // TODO more dynamic stake amount
@@ -99,7 +100,7 @@ async function bootProc(index: number, entropy: string) {
 
             await send(at)
 
-            console.log('Successfully planted');
+            console.log('Successfully planted', Bun.env.STAKE_AMOUNT / 1e7);
         }
 
         planted = true;
@@ -119,7 +120,7 @@ async function bootProc(index: number, entropy: string) {
     ], { stdout: 'pipe' })
 
     if (proc) {
-        console.log('Proc booted', errors);
+        console.log('Proc booted');
         const reader = proc.stdout.getReader();
         await readStream(reader);
     }
