@@ -30,11 +30,15 @@ async function run() {
     // TODO might be able to slim up `getContractData` calls to only index until there's definitely a new block
 
     const { index, block, pail } = contractData;
-    const entropy = block ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
-    const timestamp = block ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
+    const entropy = block?.entropy ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
+    const timestamp = block?.timestamp ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
 
     if (index !== prev_index) {
-        console.log(index, entropy, timestamp);
+        delete block?.timestamp;
+        delete block?.entropy;
+        delete block?.normalized_total;
+        delete block?.staked_total;
+        console.log(block, entropy, timestamp);
 
         if (proc) {
             proc.kill()
@@ -131,7 +135,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
         const { done, value } = await reader.read();
 
         if (!value) {
-            console.log('NO VALUE');
+            console.log('NO VALUE'); // TODO seeing this too much atm and not seeing successfully worked
             break;
         }
 
@@ -156,7 +160,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
                 }
             } else {
                 await send(at)
-                console.log('Successfully worked');
+                console.log('Successfully worked', at.result);
             }
 
             worked = true;

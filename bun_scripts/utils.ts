@@ -7,16 +7,16 @@ import { Client } from 'kale-sc-sdk';
 const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
 
 export interface Block {
-    timestamp: bigint,
+    timestamp?: bigint,
     min_gap: bigint,
     min_stake: bigint,
     min_zeros: bigint,
     max_gap: bigint,
     max_stake: bigint,
     max_zeros: bigint,
-    entropy: Buffer,
-    staked_total: bigint,
-    normalized_total: bigint,
+    entropy?: Buffer,
+    staked_total?: bigint,
+    normalized_total?: bigint,
 }
 
 export interface Pail {

@@ -50,6 +50,9 @@ export declare const Errors: {
     13: {
         message: string;
     };
+    14: {
+        message: string;
+    };
 };
 export interface Block {
     entropy: Buffer;
@@ -132,7 +135,7 @@ export interface Client {
          * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
          */
         simulate?: boolean;
-    }) => Promise<AssembledTransaction<null>>;
+    }) => Promise<AssembledTransaction<u32>>;
     /**
      * Construct and simulate a harvest transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
@@ -251,7 +254,7 @@ export declare class Client extends ContractClient {
     constructor(options: ContractClientOptions);
     readonly fromJSON: {
         plant: (json: string) => AssembledTransaction<null>;
-        work: (json: string) => AssembledTransaction<null>;
+        work: (json: string) => AssembledTransaction<number>;
         harvest: (json: string) => AssembledTransaction<bigint>;
         homestead: (json: string) => AssembledTransaction<null>;
         upgrade: (json: string) => AssembledTransaction<null>;

@@ -20,7 +20,7 @@ async function runHarvest(index: number) {
         if (!(
             at.simulation.error.includes('Error(Contract, #9)')
             || at.simulation.error.includes('Error(Contract, #10)')
-            || at.simulation.error.includes('Error(Contract, #13)')
+            || at.simulation.error.includes('Error(Contract, #14)')
         )) {
             console.error('Harvest Error:', at.simulation.error);
         }
