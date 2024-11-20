@@ -38,7 +38,7 @@ async function run() {
         delete block?.entropy;
         delete block?.normalized_total;
         delete block?.staked_total;
-        console.log(block, entropy, timestamp);
+        console.log(index, block, entropy, timestamp);
 
         if (proc) {
             proc.kill()
@@ -142,7 +142,8 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
         Bun.write(Bun.stdout, value);
 
         try {
-            const [nonce, hash] = JSON.parse(Buffer.from(value).toString('utf-8'))
+            const lastLine = Buffer.from(value).toString('utf-8').trim().split('\n').pop();
+            const [nonce, hash] = JSON.parse(lastLine!);
 
             const at = await contract.work({
                 farmer: Bun.env.FARMER_PK,

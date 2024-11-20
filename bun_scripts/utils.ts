@@ -62,48 +62,68 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
     })
 }
 
-export async function getContractData(just_index: boolean = false) {
+export async function getIndex() {
+    let index: number = 0;
+
+    await rpc.getContractData(
+        Bun.env.CONTRACT_ID,
+        xdr.ScVal.scvLedgerKeyContractInstance()
+    ).then(({ val }) =>
+        val.contractData()
+            .val()
+            .instance()
+            .storage()
+    ).then((storage) => {
+        return storage?.map((entry) => {
+            const key: string = scValToNative(entry.key())[0]
+
+            if (key === 'FarmIndex') {
+                index = entry.val().u32()
+            }
+        })
+    })
+
+    return index;
+}
+
+export async function getBlock(index: number) {
+    let block: Block | undefined;
+
+    await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+        xdr.ScVal.scvSymbol('Block'),
+        xdr.ScVal.scvU32(Number(index))
+    ]), Durability.Temporary)
+        .then(({ val }) => {
+            block = scValToNative(val.contractData().val())
+        })
+
+    return block
+}
+
+export async function getPail(index: number) {
+    let pail: Pail | undefined;
+
+    await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+        xdr.ScVal.scvSymbol('Pail'),
+        Address.fromString(Bun.env.FARMER_PK).toScVal(),
+        xdr.ScVal.scvU32(Number(index))
+    ]), Durability.Temporary)
+        .then(({ val }) => {
+            pail = scValToNative(val.contractData().val())
+        })
+
+    return pail
+}
+
+export async function getContractData() {
     let index: number = 0;
     let block: Block | undefined;
     let pail: Pail | undefined;
 
     try {
-        await rpc.getContractData(
-            Bun.env.CONTRACT_ID,
-            xdr.ScVal.scvLedgerKeyContractInstance()
-        ).then(({ val }) =>
-            val.contractData()
-                .val()
-                .instance()
-                .storage()
-        ).then((storage) => {
-            return storage?.map((entry) => {
-                const key: string = scValToNative(entry.key())[0]
-
-                if (key === 'FarmIndex') {
-                    index = entry.val().u32()
-                }
-            })
-        })
-
-        if (!just_index) {
-            await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
-                xdr.ScVal.scvSymbol('Block'),
-                xdr.ScVal.scvU32(Number(index))
-            ]), Durability.Temporary)
-                .then(({ val }) => {
-                    block = scValToNative(val.contractData().val())
-                })
-
-            await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
-                xdr.ScVal.scvSymbol('Pail'),
-                Address.fromString(Bun.env.FARMER_PK).toScVal(),
-                xdr.ScVal.scvU32(Number(index))
-            ]), Durability.Temporary)
-                .then(({ val }) => {
-                    pail = scValToNative(val.contractData().val())
-                })
-        }
+        index = await getIndex();
+        block = await getBlock(index);
+        pail = await getPail(index);
     } catch { }
 
     return { index, block, pail }

@@ -1,7 +1,9 @@
 import { Api } from "@stellar/stellar-sdk/rpc";
-import { contract, getContractData, readINDEX, send, writeINDEX } from "./utils";
+import { contract, getIndex, getPail, readINDEX, send, writeINDEX } from "./utils";
 
-let { index } = await getContractData(true)
+// TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested
+
+let index = await getIndex() - 1; // Current index will never be able to be harvested
 let START_INDEX = index;
 
 await runHarvest(index);
@@ -25,8 +27,13 @@ async function runHarvest(index: number) {
             console.error('Harvest Error:', at.simulation.error);
         }
     } else {
+        // must come before send as send deletes the pail value
+        const stake = (await getPail(index))?.stake ?? BigInt(Bun.env.STAKE_AMOUNT);
+
         await send(at)
-        const reward = Number(at.result - BigInt(Bun.env.STAKE_AMOUNT)) / 1e7;
+
+        const reward = Number(at.result - stake) / 1e7;
+
         console.log('Successfully harvested', index, reward);
         process.send?.(`Successfully harvested ${index} ${reward}`);
     }
