@@ -6,6 +6,7 @@ import { Api } from '@stellar/stellar-sdk/rpc';
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined }
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
 let prev_index: number | undefined
+let planting = false
 let booting = false
 let planted = false
 let worked = false
@@ -29,11 +30,25 @@ async function run() {
 
     // TODO might be able to slim up `getContractData` calls to only index until there's definitely a new block
 
-    const { index, block, pail } = contractData;
+    let { index } = contractData;
+    const { block, pail } = contractData;
     const entropy = block?.entropy ? block.entropy.toString('hex') : Buffer.alloc(32).toString('hex');
     const timestamp = block?.timestamp ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
+    const timeDiff = new Date().getTime() - timestamp.getTime();
 
-    if (index !== prev_index) {
+    if (!planting && timeDiff > 300000) {
+        planting = true;
+        console.log('Preemptive planting');
+
+        try {
+            await plant()
+        } finally {
+            planting = false;
+            return;
+        }
+    } 
+    
+    else if (index !== prev_index) {
         delete block?.timestamp;
         delete block?.entropy;
         delete block?.normalized_total;
@@ -55,10 +70,11 @@ async function run() {
                 console.log(message);
             },
         });
-    } else {
-        const timeDiff = timestamp.getTime() - new Date().getTime();
-        const minutes = Math.floor(Math.abs(timeDiff) / 60000);
-        const seconds = Math.floor((Math.abs(timeDiff) % 60000) / 1000);
+    } 
+    
+    else {
+        const minutes = Math.floor(timeDiff / 60000);
+        const seconds = Math.floor((timeDiff % 60000) / 1000);
 
         console.log('Running...', `${minutes}m ${seconds}s`);
     }
@@ -80,34 +96,7 @@ async function bootProc(index: number, entropy: string) {
     console.log('Booting...', errors);
 
     if (!planted) {
-        // TODO more dynamic stake amount
-
-        const at = await contract.plant({
-            farmer: Bun.env.FARMER_PK,
-            amount: BigInt(Bun.env.STAKE_AMOUNT)
-        })
-
-        if (Api.isSimulationError(at.simulation!)) {
-            if (at.simulation.error.includes('Error(Contract, #8)')) {
-                console.log('Already planted');
-            } else {
-                console.error('Plant Error:', at.simulation.error);
-                errors++
-                return;
-            }
-        } else {
-            await at.signAuthEntries({
-                // address: Bun.env.FARMER_PK,
-                publicKey: Bun.env.FARMER_PK,
-                signAuthEntry: farmerSigner.signAuthEntry
-            })
-
-            await send(at)
-
-            console.log('Successfully planted', Bun.env.STAKE_AMOUNT / 1e7);
-        }
-
-        planted = true;
+        await plant()
     }
 
     if (proc || worked)
@@ -174,4 +163,35 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
             break;
         }
     }
+}
+
+async function plant() {
+    // TODO more dynamic stake amount
+
+    const at = await contract.plant({
+        farmer: Bun.env.FARMER_PK,
+        amount: BigInt(Bun.env.STAKE_AMOUNT)
+    })
+
+    if (Api.isSimulationError(at.simulation!)) {
+        if (at.simulation.error.includes('Error(Contract, #8)')) {
+            console.log('Already planted');
+        } else {
+            console.error('Plant Error:', at.simulation.error);
+            errors++
+            return;
+        }
+    } else {
+        await at.signAuthEntries({
+            // address: Bun.env.FARMER_PK,
+            publicKey: Bun.env.FARMER_PK,
+            signAuthEntry: farmerSigner.signAuthEntry
+        })
+
+        await send(at)
+
+        console.log('Successfully planted', Bun.env.STAKE_AMOUNT / 1e7);
+    }
+
+    planted = true;
 }

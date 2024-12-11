@@ -118,7 +118,7 @@ impl HashMiner {
 }
 
 fn main() {
-    let thread_count = rayon::current_num_threads();
+    let thread_count = rayon::current_num_threads() - 2;
     let args = Args::parse();
 
     let index = args.index;
