@@ -27,6 +27,16 @@ async function runHarvest(index: number) {
             console.error('Harvest Error:', at.simulation.error);
         }
     } else {
+        // TODO still surprised this can happen. 
+        // A stroop is a really small amount and seems like we should be able to get it way before zero if we're doing any work at all
+        if (at.result === BigInt(0)) {
+            // 7650
+            // 7657
+            console.log('No reward to harvest', index);
+            process.send?.(`No reward to harvest ${index}`);
+            return;
+        }
+
         // must come before send as send deletes the pail value
         const stake = (await getPail(index))?.stake ?? BigInt(Bun.env.STAKE_AMOUNT);
 
