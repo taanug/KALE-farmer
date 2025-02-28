@@ -27,6 +27,13 @@ export const Errors = {
 };
 export class Client extends ContractClient {
     options;
+    static async deploy(
+    /** Constructor/Initialization Args for the contract's `__constructor` method */
+    { farmer, asset }, 
+    /** Options for initalizing a Client as well as for calling a method, with extras specific to deploying. */
+    options) {
+        return ContractClient.deploy({ farmer, asset }, options);
+    }
     constructor(options) {
         super(new ContractSpec(["AAAAAAAAAAAAAAAFcGxhbnQAAAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
             "AAAAAAAAAAAAAAAEd29yawAAAAMAAAAAAAAABmZhcm1lcgAAAAAAEwAAAAAAAAAEaGFzaAAAA+4AAAAgAAAAAAAAAAVub25jZQAAAAAAAAYAAAABAAAABA==",

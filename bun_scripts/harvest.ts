@@ -50,6 +50,9 @@ async function runHarvest(index: number) {
 
     index--;
 
-    if (index >= await readINDEX() && index >= 0 && index >= START_INDEX - 288) // 24 hours of 5 minute blocks
-        return runHarvest(index)
+    // 24 hours of 5 minute blocks
+    if (index >= await readINDEX() && index >= 0 && index >= START_INDEX - 288) {
+        await Bun.sleep(1000);
+        return runHarvest(index);
+    }
 }

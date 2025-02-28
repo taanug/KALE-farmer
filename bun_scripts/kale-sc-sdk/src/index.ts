@@ -3,6 +3,7 @@ import {
   AssembledTransaction,
   Client as ContractClient,
   ClientOptions as ContractClientOptions,
+  MethodOptions,
   Spec as ContractSpec,
 } from '@stellar/stellar-sdk/contract';
 import type {
@@ -26,29 +27,17 @@ export const networks = {
 
 export const Errors = {
   1: { message: "HomesteadExists" },
-
   2: { message: "HomesteadMissing" },
-
   4: { message: "FarmPaused" },
-
   5: { message: "FarmNotPaused" },
-
   6: { message: "PlantAmountTooLow" },
-
   7: { message: "ZeroCountTooLow" },
-
   8: { message: "PailExists" },
-
   9: { message: "PailMissing" },
-
   10: { message: "WorkMissing" },
-
   11: { message: "BlockMissing" },
-
   12: { message: "BlockInvalid" },
-
   13: { message: "HashInvalid" },
-
   14: { message: "HarvestNotReady" }
 }
 
@@ -216,6 +205,22 @@ export interface Client {
   }) => Promise<AssembledTransaction<null>>
 }
 export class Client extends ContractClient {
+  static async deploy<T = Client>(
+    /** Constructor/Initialization Args for the contract's `__constructor` method */
+    { farmer, asset }: { farmer: string, asset: string },
+    /** Options for initalizing a Client as well as for calling a method, with extras specific to deploying. */
+    options: MethodOptions &
+      Omit<ContractClientOptions, "contractId"> & {
+        /** The hash of the Wasm blob, which must already be installed on-chain. */
+        wasmHash: Buffer | string;
+        /** Salt used to generate the contract's ID. Passed through to {@link Operation.createCustomContract}. Default: random. */
+        salt?: Buffer | Uint8Array;
+        /** The format used to decode `wasmHash`, if it's provided as a string. */
+        format?: "hex" | "base64";
+      }
+  ): Promise<AssembledTransaction<T>> {
+    return ContractClient.deploy({ farmer, asset }, options)
+  }
   constructor(public readonly options: ContractClientOptions) {
     super(
       new ContractSpec(["AAAAAAAAAAAAAAAFcGxhbnQAAAAAAAACAAAAAAAAAAZmYXJtZXIAAAAAABMAAAAAAAAABmFtb3VudAAAAAAACwAAAAA=",
