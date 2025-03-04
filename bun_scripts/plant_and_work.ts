@@ -82,7 +82,7 @@ async function run() {
     if (!booting && !proc && (!planted || !worked)) {
         try {
             booting = true;
-            await bootProc(index, entropy)
+            await bootProc(index, entropy, timeDiff)
         } catch (err) {
             console.error('Boot Error:', err);
             errors++
@@ -92,15 +92,15 @@ async function run() {
     }
 }
 
-async function bootProc(index: number, entropy: string) {
-    console.log('Booting...', errors);
-
+async function bootProc(index: number, entropy: string, timeDiff: number) {
     if (!planted) {
         await plant()
     }
 
-    if (proc || worked)
+    if (proc || worked || timeDiff < 240000) // don't work till >= 4 minutes after block open
         return
+
+    console.log('Booting...', errors);
 
     // TODO once set `Bun.env.ZERO_COUNT` succeeds try for N+1
 
@@ -109,7 +109,7 @@ async function bootProc(index: number, entropy: string) {
         '--farmer-hex', Keypair.fromPublicKey(Bun.env.FARMER_PK).rawPublicKey().toString('hex'),
         '--index', index.toString(),
         '--entropy-hex', entropy,
-        '--min-zeros', Bun.env.ZERO_COUNT.toString(),
+        '--nonce-count', Bun.env.NONCE_COUNT.toString(),
     ], { stdout: 'pipe' })
 
     if (proc) {
