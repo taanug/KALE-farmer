@@ -133,6 +133,15 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
         try {
             const lastLine = Buffer.from(value).toString('utf-8').trim().split('\n').pop();
             const [nonce, hash] = JSON.parse(lastLine!);
+            let countZeros = 0;
+
+            for (const char of hash) {
+                if (char === '0') {
+                    countZeros++;
+                } else {
+                    break;
+                }
+            }
 
             const at = await contract.work({
                 farmer: Bun.env.FARMER_PK,
@@ -150,7 +159,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
                 }
             } else {
                 await send(at)
-                console.log('Successfully worked', at.result);
+                console.log('Successfully worked', at.result, countZeros);
             }
 
             worked = true;
