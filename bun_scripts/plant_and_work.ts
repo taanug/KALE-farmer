@@ -97,12 +97,13 @@ async function bootProc(index: number, entropy: string, timeDiff: number) {
         await plant()
     }
 
-    if (proc || worked || timeDiff < 240000) // don't work till >= 4 minutes after block open
+    if (proc || worked || timeDiff < 200000) // don't work till >= 4 minutes after block open
         return
 
     console.log('Booting...', errors);
 
     // TODO once set `Bun.env.ZERO_COUNT` succeeds try for N+1
+    // TODO do work early but submit it late
 
     proc = Bun.spawn([
         '../target/release/kale-farmer',
