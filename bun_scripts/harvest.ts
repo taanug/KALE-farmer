@@ -1,4 +1,4 @@
-import { Api } from "@stellar/stellar-sdk/rpc";
+import { Api } from "@stellar/stellar-sdk/minimal/rpc";
 import { contract, getIndex, readINDEX, send, writeINDEX } from "./utils";
 
 // TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested

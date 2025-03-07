@@ -1,7 +1,7 @@
 import type { Subprocess } from 'bun';
 import { contract, farmerSigner, getContractData, send, type Block, type Pail } from './utils';
-import { Keypair } from '@stellar/stellar-sdk'
-import { Api } from '@stellar/stellar-sdk/rpc';
+import { Keypair } from '@stellar/stellar-sdk/minimal'
+import { Api } from '@stellar/stellar-sdk/minimal/rpc';
 
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined }
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
@@ -180,7 +180,7 @@ async function plant() {
 
     const at = await contract.plant({
         farmer: Bun.env.FARMER_PK,
-        amount: BigInt(Bun.env.STAKE_AMOUNT)
+        amount: errors ? 0n : BigInt(Bun.env.STAKE_AMOUNT) // don't stake if there are errors
     })
 
     if (Api.isSimulationError(at.simulation!)) {
