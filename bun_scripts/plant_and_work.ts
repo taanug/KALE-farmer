@@ -1,7 +1,7 @@
 import type { Subprocess } from 'bun';
 import { contract, farmerSigner, getContractData, send, type Block, type Pail } from './utils';
-import { Keypair } from '@stellar/stellar-sdk'
-import { Api } from '@stellar/stellar-sdk/rpc';
+import { Keypair } from '@stellar/stellar-sdk/minimal'
+import { Api } from '@stellar/stellar-sdk/minimal/rpc';
 
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined }
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
@@ -82,7 +82,7 @@ async function run() {
     if (!booting && !proc && (!planted || !worked)) {
         try {
             booting = true;
-            await bootProc(index, entropy)
+            await bootProc(index, entropy, timeDiff)
         } catch (err) {
             console.error('Boot Error:', err);
             errors++
@@ -92,24 +92,25 @@ async function run() {
     }
 }
 
-async function bootProc(index: number, entropy: string) {
-    console.log('Booting...', errors);
-
+async function bootProc(index: number, entropy: string, timeDiff: number) {
     if (!planted) {
         await plant()
     }
 
-    if (proc || worked)
+    if (proc || worked || timeDiff < 200000) // don't work till >= 4 minutes after block open
         return
 
+    console.log('Booting...', errors);
+
     // TODO once set `Bun.env.ZERO_COUNT` succeeds try for N+1
+    // TODO do work early but submit it late
 
     proc = Bun.spawn([
         '../target/release/kale-farmer',
         '--farmer-hex', Keypair.fromPublicKey(Bun.env.FARMER_PK).rawPublicKey().toString('hex'),
         '--index', index.toString(),
         '--entropy-hex', entropy,
-        '--min-zeros', Bun.env.ZERO_COUNT.toString(),
+        '--nonce-count', Bun.env.NONCE_COUNT.toString(),
     ], { stdout: 'pipe' })
 
     if (proc) {
@@ -133,6 +134,15 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
         try {
             const lastLine = Buffer.from(value).toString('utf-8').trim().split('\n').pop();
             const [nonce, hash] = JSON.parse(lastLine!);
+            let countZeros = 0;
+
+            for (const char of hash) {
+                if (char === '0') {
+                    countZeros++;
+                } else {
+                    break;
+                }
+            }
 
             const at = await contract.work({
                 farmer: Bun.env.FARMER_PK,
@@ -150,7 +160,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
                 }
             } else {
                 await send(at)
-                console.log('Successfully worked', at.result);
+                console.log('Successfully worked', at.result, countZeros);
             }
 
             worked = true;
@@ -170,7 +180,7 @@ async function plant() {
 
     const at = await contract.plant({
         farmer: Bun.env.FARMER_PK,
-        amount: BigInt(Bun.env.STAKE_AMOUNT)
+        amount: errors ? 0n : BigInt(Bun.env.STAKE_AMOUNT) // don't stake if there are errors
     })
 
     if (Api.isSimulationError(at.simulation!)) {

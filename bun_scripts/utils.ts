@@ -1,7 +1,7 @@
-import { Address, Keypair, scValToNative, xdr } from "@stellar/stellar-sdk";
-import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/contract";
-import type { Tx } from "@stellar/stellar-sdk/contract";
-import { Durability, Server } from "@stellar/stellar-sdk/rpc";
+import { Address, Keypair, scValToNative, xdr } from "@stellar/stellar-sdk/minimal";
+import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/minimal/contract";
+import type { Tx } from "@stellar/stellar-sdk/minimal/contract";
+import { Durability, Server } from "@stellar/stellar-sdk/minimal/rpc";
 import { Client } from 'kale-sc-sdk';
 
 const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';

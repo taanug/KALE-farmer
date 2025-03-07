@@ -9,7 +9,7 @@ declare module "bun" {
         FARMER_SK: string
         CONTRACT_ID: string
         STAKE_AMOUNT: number
-        ZERO_COUNT: number
+        NONCE_COUNT: number
         INDEX: number
     }
 }
