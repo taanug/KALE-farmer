@@ -14,6 +14,9 @@ let errors = 0
 
 // TODO We have timestamps, we don't need to look every 5 seconds we can wait till the next block
 
+// TODO plant should come before harvest
+// And honestly harvest should come like midway through so we don't compete with other farmers for plant time
+
 contractData = await getContractData()
 run()
 
@@ -23,7 +26,7 @@ setInterval(async () => {
 }, 5000)
 
 async function run() {
-    if (errors > 10) {
+    if (errors > 12) {
         console.log('Too many errors, exiting');
         process.exit(1);
     }
@@ -36,19 +39,22 @@ async function run() {
     const timestamp = block?.timestamp ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
     const timeDiff = new Date().getTime() - timestamp.getTime();
 
-    if (!planting && timeDiff > 300000) {
-        planting = true;
-        console.log('Preemptive planting');
+    // TODO preemptive planting
 
-        try {
-            await plant()
-        } finally {
-            planting = false;
-            return;
-        }
-    } 
-    
-    else if (index !== prev_index) {
+    // if (!planting && timeDiff >= 300000) {
+    //     planting = true;
+    //     console.log('Preemptive planting');
+
+    //     try {
+    //         await plant()
+    //     } finally {
+    //         planting = false;
+    //         return;
+    //     }
+    // } 
+
+    // else 
+    if (index !== prev_index) {
         delete block?.timestamp;
         delete block?.entropy;
         delete block?.normalized_total;
@@ -70,14 +76,16 @@ async function run() {
                 console.log(message);
             },
         });
-    } 
-    
+    }
+
     else {
         const minutes = Math.floor(timeDiff / 60000);
         const seconds = Math.floor((timeDiff % 60000) / 1000);
 
         console.log('Running...', `${minutes}m ${seconds}s`);
     }
+
+    ////
 
     if (!booting && !proc && (!planted || !worked)) {
         try {
@@ -115,64 +123,54 @@ async function bootProc(index: number, entropy: string, timeDiff: number) {
 
     if (proc) {
         console.log('Proc booted');
-        const reader = proc.stdout.getReader();
-        await readStream(reader);
+        await readStream(proc.stdout);
     }
 }
 
-async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBufferLike>>) {
-    while (true) {
-        const { done, value } = await reader.read();
+async function readStream(reader: ReadableStream<Uint8Array<ArrayBufferLike>>) {
+    const value = await Bun.readableStreamToText(reader);
 
-        if (!value) {
-            console.log('NO VALUE'); // TODO seeing this too much atm and not seeing successfully worked
-            break;
-        }
-
-        Bun.write(Bun.stdout, value);
-
-        try {
-            const lastLine = Buffer.from(value).toString('utf-8').trim().split('\n').pop();
-            const [nonce, hash] = JSON.parse(lastLine!);
-            let countZeros = 0;
-
-            for (const char of hash) {
-                if (char === '0') {
-                    countZeros++;
-                } else {
-                    break;
-                }
-            }
-
-            const at = await contract.work({
-                farmer: Bun.env.FARMER_PK,
-                hash: Buffer.from(hash, 'hex'),
-                nonce: BigInt(nonce),
-            })
-
-            if (Api.isSimulationError(at.simulation!)) {
-                if (at.simulation.error.includes('Error(Contract, #7)')) {
-                    console.log('Already worked');
-                } else {
-                    console.error('Work Error:', at.simulation.error);
-                    errors++
-                    return;
-                }
-            } else {
-                await send(at)
-                console.log('Successfully worked', at.result, countZeros);
-            }
-
-            worked = true;
-
-            break;
-        } catch { }
-
-        if (done) {
-            console.log('DONE');
-            break;
-        }
+    if (!value) {
+        console.log('NO VALUE');
+        return;
     }
+
+    Bun.write(Bun.stdout, value);
+
+    try {
+        const lastLine = Buffer.from(value).toString('utf-8').trim().split('\n').pop();
+        const [nonce, hash] = JSON.parse(lastLine!);
+        let countZeros = 0;
+
+        for (const char of hash) {
+            if (char === '0') {
+                countZeros++;
+            } else {
+                break;
+            }
+        }
+
+        const at = await contract.work({
+            farmer: Bun.env.FARMER_PK,
+            hash: Buffer.from(hash, 'hex'),
+            nonce: BigInt(nonce),
+        })
+
+        if (Api.isSimulationError(at.simulation!)) {
+            if (at.simulation.error.includes('Error(Contract, #7)')) {
+                console.log('Already worked');
+            } else {
+                console.error('Work Error:', at.simulation.error);
+                errors++
+                return;
+            }
+        } else {
+            await send(at)
+            console.log('Successfully worked', at.result, countZeros);
+        }
+
+        worked = true;
+    } catch { }
 }
 
 async function plant() {

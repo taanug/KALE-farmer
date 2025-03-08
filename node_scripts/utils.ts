@@ -1,11 +1,18 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+
+import * as fs from 'fs/promises';
 import { Address, Keypair, scValToNative, xdr } from "@stellar/stellar-sdk/minimal";
 import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/minimal/contract";
 import type { Tx } from "@stellar/stellar-sdk/minimal/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/minimal/rpc";
 import { Client } from 'kale-sc-sdk';
-import { version } from './package.json';
 
-const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
+const { version } = JSON.parse(
+  await fs.readFile(new URL("./package.json", import.meta.url), "utf8")
+);
+
+const INDEX_filename = process.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
 
 export interface Block {
     timestamp?: bigint,
@@ -27,49 +34,54 @@ export interface Pail {
     zeros: bigint | undefined,
 }
 
-export const rpc = new Server(Bun.env.RPC_URL);
-export const farmerSigner = basicNodeSigner(Keypair.fromSecret(Bun.env.FARMER_SK), Bun.env.NETWORK_PASSPHRASE)
+export const rpc = new Server(process.env.RPC_URL!);
+export const farmerSigner = basicNodeSigner(Keypair.fromSecret(process.env.FARMER_SK!), process.env.NETWORK_PASSPHRASE!);
 
 export const contract = new Client({
-    rpcUrl: Bun.env.RPC_URL,
-    contractId: Bun.env.CONTRACT_ID,
-    networkPassphrase: Bun.env.NETWORK_PASSPHRASE,
-})
+    rpcUrl: process.env.RPC_URL!,
+    contractId: process.env.CONTRACT_ID!,
+    networkPassphrase: process.env.NETWORK_PASSPHRASE!,
+});
+
+export function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) };
 
 export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: number) {
-    const data = new FormData();
+    const formData = new FormData();
 
     if (txn instanceof AssembledTransaction) {
-        txn = txn.built!.toXDR()
+        txn = txn.built!.toXDR();
     } else if (typeof txn !== 'string') {
-        txn = txn.toXDR()
+        txn = txn.toXDR();
     }
 
-    data.set('xdr', txn);
+    formData.append('xdr', txn);
 
-    if (fee)
-        data.set('fee', fee.toString());
+    if (fee) {
+        formData.append('fee', fee.toString());
+    }
 
-    return fetch(Bun.env.LAUNCHTUBE_URL, {
+    const response = await fetch(process.env.LAUNCHTUBE_URL!, {
         method: 'POST',
         headers: {
-            authorization: `Bearer ${Bun.env.LAUNCHTUBE_JWT}`,
+            authorization: `Bearer ${process.env.LAUNCHTUBE_JWT!}`,
             'X-Client-Name': 'rust-kale-farmer',
             'X-Client-Version': version
         },
-        body: data
-    }).then(async (res) => {
-        if (res.ok)
-            return res.json()
-        else throw await res.text()
-    })
+        body: formData
+    });
+
+    if (response.ok) {
+        return response.json();
+    } else {
+        throw await response.text();
+    }
 }
 
 export async function getIndex() {
     let index: number = 0;
 
     await rpc.getContractData(
-        Bun.env.CONTRACT_ID,
+        process.env.CONTRACT_ID!,
         xdr.ScVal.scvLedgerKeyContractInstance()
     ).then(({ val }) =>
         val.contractData()
@@ -78,13 +90,13 @@ export async function getIndex() {
             .storage()
     ).then((storage) => {
         return storage?.map((entry) => {
-            const key: string = scValToNative(entry.key())[0]
+            const key: string = scValToNative(entry.key())[0];
 
             if (key === 'FarmIndex') {
-                index = entry.val().u32()
+                index = entry.val().u32();
             }
-        })
-    })
+        });
+    });
 
     return index;
 }
@@ -92,30 +104,30 @@ export async function getIndex() {
 export async function getBlock(index: number) {
     let block: Block | undefined;
 
-    await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+    await rpc.getContractData(process.env.CONTRACT_ID!, xdr.ScVal.scvVec([
         xdr.ScVal.scvSymbol('Block'),
         xdr.ScVal.scvU32(Number(index))
     ]), Durability.Temporary)
         .then(({ val }) => {
-            block = scValToNative(val.contractData().val())
-        })
+            block = scValToNative(val.contractData().val());
+        });
 
-    return block
+    return block;
 }
 
 export async function getPail(index: number) {
     let pail: Pail | undefined;
 
-    await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
+    await rpc.getContractData(process.env.CONTRACT_ID!, xdr.ScVal.scvVec([
         xdr.ScVal.scvSymbol('Pail'),
-        Address.fromString(Bun.env.FARMER_PK).toScVal(),
+        Address.fromString(process.env.FARMER_PK!).toScVal(),
         xdr.ScVal.scvU32(Number(index))
     ]), Durability.Temporary)
         .then(({ val }) => {
-            pail = scValToNative(val.contractData().val())
-        })
+            pail = scValToNative(val.contractData().val());
+        });
 
-    return pail
+    return pail;
 }
 
 export async function getContractData() {
@@ -129,19 +141,18 @@ export async function getContractData() {
         pail = await getPail(index);
     } catch { }
 
-    return { index, block, pail }
+    return { index, block, pail };
 }
 
 export async function readINDEX() {
-    const file = Bun.file(INDEX_filename)
-
-    if (await file.exists()) {
-        return file.text().then((index) => Number(index ?? 0));
-    } else {
+    try {
+        const data = await fs.readFile(INDEX_filename, { encoding: 'utf-8' });
+        return Number(data ?? 0);
+    } catch {
         return 0;
     }
 }
 
 export async function writeINDEX(index: number) {
-    return Bun.write(INDEX_filename, index.toString());
+    return fs.writeFile(INDEX_filename, index.toString(), { encoding: 'utf-8' });
 }
