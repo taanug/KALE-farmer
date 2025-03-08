@@ -1,14 +1,13 @@
 {
-  "name": "bun_tests",
+  "name": "node_scripts",
   "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "farm": "node --loader ts-node/esm plant_and_work.ts",
-    "harvest": "node --loader ts-node/esm harvest.ts"
+    "farm": "node --import ./loader.mjs plant_and_work.ts",
+    "harvest": "node --import ./loader.mjs harvest.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "ts-node": "^10.9.2"
   },
   "peerDependencies": {

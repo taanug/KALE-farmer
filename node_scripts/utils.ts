@@ -2,13 +2,15 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import * as fs from 'fs/promises';
-import * as path from 'path';
 import { Address, Keypair, scValToNative, xdr } from "@stellar/stellar-sdk/minimal";
 import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/minimal/contract";
 import type { Tx } from "@stellar/stellar-sdk/minimal/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/minimal/rpc";
 import { Client } from 'kale-sc-sdk';
-import { version } from './package.json';
+
+const { version } = JSON.parse(
+  await fs.readFile(new URL("./package.json", import.meta.url), "utf8")
+);
 
 const INDEX_filename = process.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
 

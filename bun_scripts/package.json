@@ -1,5 +1,5 @@
 {
-  "name": "bun_tests",
+  "name": "bun_scripts",
   "version": "1.0.0",
   "module": "index.ts",
   "type": "module",
