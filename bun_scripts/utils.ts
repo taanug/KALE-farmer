@@ -3,6 +3,7 @@ import { AssembledTransaction, basicNodeSigner } from "@stellar/stellar-sdk/mini
 import type { Tx } from "@stellar/stellar-sdk/minimal/contract";
 import { Durability, Server } from "@stellar/stellar-sdk/minimal/rpc";
 import { Client } from 'kale-sc-sdk';
+import { version } from './package.json';
 
 const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
 
@@ -53,6 +54,8 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
         method: 'POST',
         headers: {
             authorization: `Bearer ${Bun.env.LAUNCHTUBE_JWT}`,
+            'X-Client-Name': 'rust-kale-farmer',
+            'X-Client-Version': version
         },
         body: data
     }).then(async (res) => {
