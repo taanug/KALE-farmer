@@ -2,24 +2,18 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 import { Api } from "@stellar/stellar-sdk/minimal/rpc";
-import { contract, getIndex, readINDEX, send, writeINDEX } from "./utils.ts";
+import { contract, getIndex, readINDEX, send, sleep, writeINDEX } from "./utils.ts";
 
-// Helper for sleep functionality
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested
+    
+let index = await getIndex() - 1; // Current index will never be able to be harvested
+let START_INDEX = index;
 
-async function main() {
-  // TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested
-  
-  let index = await getIndex() - 1; // Current index will never be able to be harvested
-  let START_INDEX = index;
-  
-  await runHarvest(index, START_INDEX);
-  await writeINDEX(index);
-}
+await runHarvest(index, START_INDEX);
+await writeINDEX(index);
 
 async function runHarvest(index: number, START_INDEX: number) {
     console.log('Harvesting', index);
-    // process.send?.(`Harvesting ${index}`);
 
     const at = await contract.harvest({
         farmer: process.env.FARMER_PK!,
@@ -41,7 +35,6 @@ async function runHarvest(index: number, START_INDEX: number) {
         // A stroop is a really small amount and seems like we should be able to get it way before zero if we're doing any work at all
         if (at.result === BigInt(0)) {
             console.log('No reward to harvest', index);
-            // process.send?.(`No reward to harvest ${index}`);
             return;
         }
 
@@ -50,7 +43,6 @@ async function runHarvest(index: number, START_INDEX: number) {
         const reward = Number(at.result) / 1e7;
 
         console.log('Successfully harvested', index, reward);
-        // process.send?.(`Successfully harvested ${index} ${reward}`);
     }
 
     index--;
@@ -65,9 +57,3 @@ async function runHarvest(index: number, START_INDEX: number) {
         return runHarvest(index, START_INDEX);
     }
 }
-
-// Execute the main function and handle any errors
-main().catch(error => {
-    console.error("Fatal error:", error);
-    process.exit(1);
-});

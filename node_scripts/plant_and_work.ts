@@ -3,24 +3,10 @@ dotenv.config();
 
 import * as path from 'path';
 import { spawn, type ChildProcess } from 'child_process';
-import { contract, farmerSigner, getContractData, send } from './utils.ts';
+import { contract, farmerSigner, getContractData, send, type Block, type Pail } from './utils.ts';
 import { Keypair } from '@stellar/stellar-sdk/minimal';
 import { Api } from '@stellar/stellar-sdk/minimal/rpc';
 import type Stream from "stream";
-
-interface Block {
-    entropy?: Buffer;
-    timestamp?: bigint;
-    normalized_total?: bigint;
-    staked_total?: bigint;
-}
-
-interface Pail {
-    sequence?: bigint;
-    stake?: bigint;
-    gap?: bigint;
-    zeros?: bigint;
-}
 
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined };
 let proc: ChildProcess | undefined;
@@ -31,16 +17,13 @@ let planted = false;
 let worked = false;
 let errors = 0;
 
-// Initialize and start
-async function init() {
+contractData = await getContractData();
+run();
+
+setInterval(async () => {
     contractData = await getContractData();
     run();
-
-    setInterval(async () => {
-        contractData = await getContractData();
-        run();
-    }, 5000);
-}
+}, 5000);
 
 async function run() {
     if (errors > 12) {
@@ -54,21 +37,6 @@ async function run() {
     const timestamp = block?.timestamp ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
     const timeDiff = new Date().getTime() - timestamp.getTime();
 
-    // TODO preemptive planting
-
-    // if (!planting && timeDiff >= 300000) {
-    //     planting = true;
-    //     console.log('Preemptive planting');
-
-    //     try {
-    //         await plant()
-    //     } finally {
-    //         planting = false;
-    //         return;
-    //     }
-    // } 
-
-    // else 
     if (index !== prev_index) {
         delete block?.timestamp;
         delete block?.entropy;
@@ -223,5 +191,3 @@ async function plant() {
 
     planted = true;
 }
-
-init().catch(console.error);

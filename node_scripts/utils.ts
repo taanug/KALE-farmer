@@ -43,6 +43,8 @@ export const contract = new Client({
     networkPassphrase: process.env.NETWORK_PASSPHRASE!,
 });
 
+export function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)) };
+
 export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: number) {
     const formData = new FormData();
 
@@ -71,7 +73,7 @@ export async function send<T>(txn: AssembledTransaction<T> | Tx | string, fee?: 
     if (response.ok) {
         return response.json();
     } else {
-        throw new Error(await response.text());
+        throw await response.text();
     }
 }
 
@@ -137,9 +139,7 @@ export async function getContractData() {
         index = await getIndex();
         block = await getBlock(index);
         pail = await getPail(index);
-    } catch (error) {
-        // Silently handle errors as in original
-    }
+    } catch { }
 
     return { index, block, pail };
 }
@@ -147,9 +147,8 @@ export async function getContractData() {
 export async function readINDEX() {
     try {
         const data = await fs.readFile(INDEX_filename, { encoding: 'utf-8' });
-        return Number(data || 0);
-    } catch (error) {
-        // File doesn't exist or other error
+        return Number(data ?? 0);
+    } catch {
         return 0;
     }
 }
