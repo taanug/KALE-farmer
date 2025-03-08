@@ -23,7 +23,7 @@ setInterval(async () => {
 }, 5000)
 
 async function run() {
-    if (errors > 10) {
+    if (errors > 12) {
         console.log('Too many errors, exiting');
         process.exit(1);
     }
@@ -36,19 +36,22 @@ async function run() {
     const timestamp = block?.timestamp ? new Date(Number(block.timestamp * BigInt(1000))) : new Date(0);
     const timeDiff = new Date().getTime() - timestamp.getTime();
 
-    if (!planting && timeDiff > 300000) {
-        planting = true;
-        console.log('Preemptive planting');
+    // TODO preemptive planting
 
-        try {
-            await plant()
-        } finally {
-            planting = false;
-            return;
-        }
-    } 
+    // if (!planting && timeDiff >= 300000) {
+    //     planting = true;
+    //     console.log('Preemptive planting');
+
+    //     try {
+    //         await plant()
+    //     } finally {
+    //         planting = false;
+    //         return;
+    //     }
+    // } 
     
-    else if (index !== prev_index) {
+    // else 
+    if (index !== prev_index) {
         delete block?.timestamp;
         delete block?.entropy;
         delete block?.normalized_total;
@@ -78,6 +81,8 @@ async function run() {
 
         console.log('Running...', `${minutes}m ${seconds}s`);
     }
+
+    ////
 
     if (!booting && !proc && (!planted || !worked)) {
         try {
@@ -125,7 +130,7 @@ async function readStream(reader: ReadableStreamDefaultReader<Uint8Array<ArrayBu
         const { done, value } = await reader.read();
 
         if (!value) {
-            console.log('NO VALUE'); // TODO seeing this too much atm and not seeing successfully worked
+            console.log('NO VALUE');
             break;
         }
 
