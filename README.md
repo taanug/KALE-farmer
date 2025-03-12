@@ -10,11 +10,9 @@
 
 > https://bun.sh
 
-## cd to the `bun_scripts` directory:
+### Step 4: Run `bun install`
 
-### Step 5: Run `bun install`
-
-### Step 6: Run `bun run farm`
+### Step 5: Run `bun run farm`
 
 ---
 
