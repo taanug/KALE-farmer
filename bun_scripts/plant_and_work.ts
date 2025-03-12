@@ -31,16 +31,21 @@ let timeDiff = 0;
 let minutes = 0;
 let seconds = 0;
 
+// Constants
+const MAX_ERRORS = 12;
+const CHECK_INTERVAL = 5000; // 5 seconds
+const HARVEST_DELAY = 60000; // 1 minute
+
 // Main execution
 main();
 
-function main() {
-  run();
-  setInterval(run, 5000);
+function main(): void {
+  void run(); // Initial run
+  setInterval(() => void run(), CHECK_INTERVAL);
 }
 
-async function run() {
-  if (errors > 12) {
+async function run(): Promise<void> {
+  if (errors > MAX_ERRORS) {
     console.log('Too many errors, exiting');
     process.exit(1);
   }
@@ -55,6 +60,7 @@ async function run() {
     block?.entropy?.toString('hex') ?? Buffer.alloc(32).toString('hex');
 
   setTimeDiff(block);
+
   if (index !== prevIndex) {
     handleNewBlock(index, block, entropy, pail);
   } else {
@@ -62,8 +68,8 @@ async function run() {
   }
 
   if (!booting && !proc && (!planted || !worked)) {
+    booting = true;
     try {
-      booting = true;
       await bootProc(index, entropy, timeDiff);
     } catch (err) {
       console.error('Boot Error:', err);
@@ -79,7 +85,7 @@ function handleNewBlock(
   block: Block | undefined,
   entropy: string,
   pail: Pail | undefined
-) {
+): void {
   console.log(
     firstRun
       ? `Farming KALE with ${Bun.env.FARMER_PK}`
@@ -98,10 +104,8 @@ function handleNewBlock(
     timestamp
   );
 
-  if (proc) {
-    proc.kill();
-    proc = undefined;
-  }
+  proc?.kill();
+  proc = undefined;
 
   prevIndex = index;
   planted = !!(pail?.sequence || pail?.stake);
@@ -111,29 +115,31 @@ function handleNewBlock(
   if (!firstRun) {
     setTimeout(() => {
       Bun.spawn(['bun', 'harvest.ts'], {
-        ipc(message) {
-          console.log(message);
-        },
+        ipc: (message) => console.log(message),
       });
-    }, 60000);
+    }, HARVEST_DELAY);
   }
   firstRun = false;
 }
 
-function logStatus(index: number) {
+function logStatus(index: number): void {
   const timeStr = `${minutes}m ${seconds}s`;
-  if (planted && worked) {
-    console.log(`Done Farming ${index}, waiting for a new block...`, timeStr);
-  } else if (planted && proc) {
-    console.log(`Working ${index}...`, timeStr);
-  } else if (planted) {
-    console.log(`Growing ${index}...`, timeStr);
-  } else {
-    console.log(`Planting... ${index}`, timeStr);
-  }
+  const status =
+    planted && worked
+      ? `Done Farming ${index}, waiting for a new block...`
+      : planted && proc
+      ? `Working ${index}...`
+      : planted
+      ? `Growing ${index}...`
+      : `Planting... ${index}`;
+  console.log(status, timeStr);
 }
 
-async function bootProc(index: number, entropy: string, timeDiff: number) {
+async function bootProc(
+  index: number,
+  entropy: string,
+  timeDiff: number
+): Promise<void> {
   if (!planted) await plant();
   if (proc || worked || timeDiff < Number(Bun.env.WORK_WAIT_TIME)) return;
 
@@ -145,30 +151,32 @@ async function bootProc(index: number, entropy: string, timeDiff: number) {
       '--farmer-hex',
       Keypair.fromPublicKey(Bun.env.FARMER_PK).rawPublicKey().toString('hex'),
       '--index',
-      index.toString(),
+      String(index),
       '--entropy-hex',
       entropy,
       '--nonce-count',
-      Bun.env.NONCE_COUNT.toString(),
+      String(Bun.env.NONCE_COUNT),
     ],
     { stdout: 'pipe' }
   );
 
-  if (proc) await readStream(proc.stdout);
+  if (proc.stdout) await readStream(proc.stdout);
 }
 
-async function readStream(reader: ReadableStream<Uint8Array<ArrayBufferLike>>) {
+async function readStream(reader: ReadableStream<Uint8Array>): Promise<void> {
   const value = await Bun.readableStreamToText(reader);
   if (!value) {
     console.log('NO VALUE');
     return;
   }
 
-  Bun.write(Bun.stdout, value);
+  await Bun.write(Bun.stdout, value);
 
   try {
     const lastLine = value.trim().split('\n').pop();
-    const [nonce, hash] = JSON.parse(lastLine!);
+    if (!lastLine) return;
+
+    const [nonce, hash] = JSON.parse(lastLine);
     const countZeros = hash.match(/^0*/)?.[0].length ?? 0;
 
     const at = await contract.work({
@@ -184,12 +192,12 @@ async function readStream(reader: ReadableStream<Uint8Array<ArrayBufferLike>>) {
       console.log('Successfully worked', at.result, countZeros);
       worked = true;
     }
-  } catch {
+  } catch (err) {
     // Silent catch as errors are handled elsewhere
   }
 }
 
-function handleWorkSimulationError(error: string) {
+function handleWorkSimulationError(error: string): void {
   if (error.includes('Error(Contract, #7)')) {
     console.log('Already worked');
   } else {
@@ -198,10 +206,10 @@ function handleWorkSimulationError(error: string) {
   }
 }
 
-async function plant() {
+async function plant(): Promise<void> {
   const at = await contract.plant({
     farmer: Bun.env.FARMER_PK,
-    amount: errors ? 0n : BigInt(Bun.env.STAKE_AMOUNT),
+    amount: errors ? 0n : BigInt(Bun.env.STAKE_AMOUNT || 0),
   });
 
   if (Api.isSimulationError(at.simulation!)) {
@@ -212,12 +220,15 @@ async function plant() {
       signAuthEntry: farmerSigner.signAuthEntry,
     });
     await send(at);
-    console.log('Successfully planted', Number(Bun.env.STAKE_AMOUNT) / 1e7);
+    console.log(
+      'Successfully planted',
+      Number(Bun.env.STAKE_AMOUNT || 0) / 1e7
+    );
     planted = true;
   }
 }
 
-function handlePlantSimulationError(error: string) {
+function handlePlantSimulationError(error: string): void {
   if (error.includes('Error(Contract, #8)')) {
     console.log('Already planted');
   } else {
@@ -226,11 +237,11 @@ function handlePlantSimulationError(error: string) {
   }
 }
 
-function setTimeDiff(block: Block | undefined) {
+function setTimeDiff(block: Block | undefined): void {
   timestamp = block?.timestamp
     ? new Date(Number(block.timestamp * BigInt(1000)))
     : new Date(0);
-  timeDiff = new Date().getTime() - timestamp.getTime();
+  timeDiff = Date.now() - timestamp.getTime();
   minutes = Math.floor(timeDiff / 60000);
   seconds = Math.floor((timeDiff % 60000) / 1000);
 }
