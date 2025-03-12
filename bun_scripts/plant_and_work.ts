@@ -1,25 +1,24 @@
-import type { Subprocess } from 'bun';
-import {
-  contract,
-  farmerSigner,
-  getContractData,
-  send,
-  type Block,
-  type Pail,
-} from './utils';
+import { contract, farmerSigner, getContractData, send } from './utils';
 import { Keypair } from '@stellar/stellar-sdk/minimal';
 import { Api } from '@stellar/stellar-sdk/minimal/rpc';
-
-// Types
-interface ContractData {
-  index: number;
-  block: Block | undefined;
-  pail: Pail | undefined;
-}
+import type {
+  ContractData,
+  FarmerProcess,
+  MainFn,
+  RunFn,
+  HandleNewBlockFn,
+  LogStatusFn,
+  BootProcFn,
+  ReadStreamFn,
+  HandleWorkSimulationErrorFn,
+  PlantFn,
+  HandlePlantSimulationErrorFn,
+  SetTimeDiffFn,
+} from './types';
 
 // State
 let contractData: ContractData;
-let proc: Subprocess<'ignore', 'pipe', 'inherit'> | undefined;
+let proc: FarmerProcess | undefined;
 let prevIndex: number | undefined;
 let booting = false;
 let planted = false;
@@ -37,14 +36,12 @@ const CHECK_INTERVAL = 5000; // 5 seconds
 const HARVEST_DELAY = 60000; // 1 minute
 
 // Main execution
-main();
-
-function main(): void {
+const main: MainFn = () => {
   void run(); // Initial run
   setInterval(() => void run(), CHECK_INTERVAL);
-}
+};
 
-async function run(): Promise<void> {
+const run: RunFn = async () => {
   if (errors > MAX_ERRORS) {
     console.log('Too many errors, exiting');
     process.exit(1);
@@ -78,14 +75,9 @@ async function run(): Promise<void> {
       booting = false;
     }
   }
-}
+};
 
-function handleNewBlock(
-  index: number,
-  block: Block | undefined,
-  entropy: string,
-  pail: Pail | undefined
-): void {
+const handleNewBlock: HandleNewBlockFn = (index, block, entropy, pail) => {
   console.log(
     firstRun
       ? `Farming KALE with ${Bun.env.FARMER_PK}`
@@ -120,9 +112,9 @@ function handleNewBlock(
     }, HARVEST_DELAY);
   }
   firstRun = false;
-}
+};
 
-function logStatus(index: number): void {
+const logStatus: LogStatusFn = (index) => {
   const timeStr = `${minutes}m ${seconds}s`;
   const status =
     planted && worked
@@ -133,13 +125,9 @@ function logStatus(index: number): void {
       ? `Growing ${index}...`
       : `Planting... ${index}`;
   console.log(status, timeStr);
-}
+};
 
-async function bootProc(
-  index: number,
-  entropy: string,
-  timeDiff: number
-): Promise<void> {
+const bootProc: BootProcFn = async (index, entropy, timeDiff) => {
   if (!planted) await plant();
   if (proc || worked || timeDiff < Number(Bun.env.WORK_WAIT_TIME)) return;
 
@@ -161,9 +149,9 @@ async function bootProc(
   );
 
   if (proc.stdout) await readStream(proc.stdout);
-}
+};
 
-async function readStream(reader: ReadableStream<Uint8Array>): Promise<void> {
+const readStream: ReadStreamFn = async (reader) => {
   const value = await Bun.readableStreamToText(reader);
   if (!value) {
     console.log('NO VALUE');
@@ -195,18 +183,18 @@ async function readStream(reader: ReadableStream<Uint8Array>): Promise<void> {
   } catch (err) {
     // Silent catch as errors are handled elsewhere
   }
-}
+};
 
-function handleWorkSimulationError(error: string): void {
+const handleWorkSimulationError: HandleWorkSimulationErrorFn = (error) => {
   if (error.includes('Error(Contract, #7)')) {
     console.log('Already worked');
   } else {
     console.error('Work Error:', error);
     errors++;
   }
-}
+};
 
-async function plant(): Promise<void> {
+const plant: PlantFn = async () => {
   const at = await contract.plant({
     farmer: Bun.env.FARMER_PK,
     amount: errors ? 0n : BigInt(Bun.env.STAKE_AMOUNT || 0),
@@ -226,22 +214,25 @@ async function plant(): Promise<void> {
     );
     planted = true;
   }
-}
+};
 
-function handlePlantSimulationError(error: string): void {
+const handlePlantSimulationError: HandlePlantSimulationErrorFn = (error) => {
   if (error.includes('Error(Contract, #8)')) {
     console.log('Already planted');
   } else {
     console.error('Plant Error:', error);
     errors++;
   }
-}
+};
 
-function setTimeDiff(block: Block | undefined): void {
+const setTimeDiff: SetTimeDiffFn = (block) => {
   timestamp = block?.timestamp
     ? new Date(Number(block.timestamp * BigInt(1000)))
     : new Date(0);
   timeDiff = Date.now() - timestamp.getTime();
   minutes = Math.floor(timeDiff / 60000);
   seconds = Math.floor((timeDiff % 60000) / 1000);
-}
+};
+
+// Start the program
+main();
