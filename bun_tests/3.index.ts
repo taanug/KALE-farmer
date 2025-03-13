@@ -1,5 +1,5 @@
 import { Address, xdr } from '@stellar/stellar-sdk';
-import { rpc } from './utils'
+import { rpc } from '../bun_scripts/utils'
 
 const hasher = new Bun.CryptoHasher("sha256");
 const code = await rpc.getContractWasmByContractId(Bun.env.CONTRACT_ID)
@@ -50,7 +50,7 @@ instance_length += new xdr.LedgerEntry({
 //     xdr.ScVal.scvU32(0)
 // ]), Durability.Temporary)
 //     .then((res) => {
-        
+//         console.log(res.val.contractData().toXDR('base64'));
 //     })
 
 // await rpc.getContractData(Bun.env.CONTRACT_ID, xdr.ScVal.scvVec([
@@ -62,62 +62,62 @@ instance_length += new xdr.LedgerEntry({
 //         console.log(res.val.contractData().toXDR('base64'));
 //     })
 
-// block_length += new xdr.LedgerEntry({
-//     lastModifiedLedgerSeq: 0,
-//     data: xdr.LedgerEntryData.contractData(new xdr.ContractDataEntry({
-//         contract: Address.fromString(Bun.env.CONTRACT_ID).toScAddress(),
-//         key: xdr.ScVal.scvVec([
-//             xdr.ScVal.scvSymbol('Block'),
-//             xdr.ScVal.scvU32(0)
-//         ]),
-//         val: xdr.ScVal.scvVoid(),
-//         // val: xdr.ScVal.scvMap([
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('timestamp'),
-//         //         val: xdr.ScVal.scvU64(new xdr.Uint64(0))
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('min_gap'),
-//         //         val: xdr.ScVal.scvU32(0)
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('min_stake'),
-//         //         val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('min_zeros'),
-//         //         val: xdr.ScVal.scvU32(0)
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('max_gap'),
-//         //         val: xdr.ScVal.scvU32(0)
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('max_stake'),
-//         //         val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('max_zeros'),
-//         //         val: xdr.ScVal.scvU32(0)
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('entropy'),
-//         //         val: xdr.ScVal.scvBytes(Buffer.alloc(32))
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('staked_total'),
-//         //         val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
-//         //     }),
-//         //     new xdr.ScMapEntry({
-//         //         key: xdr.ScVal.scvSymbol('normalized_total'),
-//         //         val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
-//         //     }),
-//         // ]),
-//         durability: xdr.ContractDataDurability.temporary(),
-//         ext: new xdr.ExtensionPoint(0),
-//     })),
-//     ext: new xdr.LedgerEntryExt(0),
-// }).toXDR().length;
+block_length += new xdr.LedgerEntry({
+    lastModifiedLedgerSeq: 0,
+    data: xdr.LedgerEntryData.contractData(new xdr.ContractDataEntry({
+        contract: Address.fromString(Bun.env.CONTRACT_ID).toScAddress(),
+        key: xdr.ScVal.scvVec([
+            xdr.ScVal.scvSymbol('Block'),
+            xdr.ScVal.scvU32(0)
+        ]),
+        // val: xdr.ScVal.scvVoid(),
+        val: xdr.ScVal.scvMap([
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('timestamp'),
+                val: xdr.ScVal.scvU64(new xdr.Uint64(0))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('min_gap'),
+                val: xdr.ScVal.scvU32(0)
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('min_stake'),
+                val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('min_zeros'),
+                val: xdr.ScVal.scvU32(0)
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('max_gap'),
+                val: xdr.ScVal.scvU32(0)
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('max_stake'),
+                val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('max_zeros'),
+                val: xdr.ScVal.scvU32(0)
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('entropy'),
+                val: xdr.ScVal.scvBytes(Buffer.alloc(32))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('staked_total'),
+                val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('normalized_total'),
+                val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
+            }),
+        ]),
+        durability: xdr.ContractDataDurability.temporary(),
+        ext: new xdr.ExtensionPoint(0),
+    })),
+    ext: new xdr.LedgerEntryExt(0),
+}).toXDR().length;
 
 pail_length += new xdr.LedgerEntry({
     lastModifiedLedgerSeq: 0,
@@ -128,25 +128,25 @@ pail_length += new xdr.LedgerEntry({
             Address.fromString(Bun.env.FARMER_PK).toScVal(),
             xdr.ScVal.scvU32(0)
         ]),
-        val: xdr.ScVal.scvVoid(),
-        // val: xdr.ScVal.scvMap([
-        //     new xdr.ScMapEntry({
-        //         key: xdr.ScVal.scvSymbol('gap'),
-        //         val: xdr.ScVal.scvVoid()
-        //     }),
-        //     new xdr.ScMapEntry({
-        //         key: xdr.ScVal.scvSymbol('sequence'),
-        //         val: xdr.ScVal.scvU32(0)
-        //     }),
-        //     new xdr.ScMapEntry({
-        //         key: xdr.ScVal.scvSymbol('stake'),
-        //         val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
-        //     }),
-        //     new xdr.ScMapEntry({
-        //         key: xdr.ScVal.scvSymbol('zeros'),
-        //         val: xdr.ScVal.scvVoid()
-        //     }),
-        // ]),
+        // val: xdr.ScVal.scvVoid(),
+        val: xdr.ScVal.scvMap([
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('gap'),
+                val: xdr.ScVal.scvVoid()
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('sequence'),
+                val: xdr.ScVal.scvU32(0)
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('stake'),
+                val: xdr.ScVal.scvI128(new xdr.Int128Parts({ hi: new xdr.Int64(0), lo: new xdr.Uint64(0) }))
+            }),
+            new xdr.ScMapEntry({
+                key: xdr.ScVal.scvSymbol('zeros'),
+                val: xdr.ScVal.scvVoid()
+            }),
+        ]),
         durability: xdr.ContractDataDurability.temporary(),
         ext: new xdr.ExtensionPoint(0),
     })),
