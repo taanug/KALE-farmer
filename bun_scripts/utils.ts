@@ -9,12 +9,12 @@ const INDEX_filename = Bun.env.ENV === 'mainnet' ? '.INDEX' : '.INDEX.testnet';
 
 export interface Block {
     timestamp?: bigint,
-    min_gap: bigint,
+    min_gap: number,
     min_stake: bigint,
-    min_zeros: bigint,
-    max_gap: bigint,
+    min_zeros: number,
+    max_gap: number,
     max_stake: bigint,
-    max_zeros: bigint,
+    max_zeros: number,
     entropy?: Buffer,
     staked_total?: bigint,
     normalized_total?: bigint,
@@ -104,20 +104,20 @@ export async function getBlock(index: number) {
         xdr.ScVal.scvU32(Number(index))
     ]), Durability.Temporary)
         .then((res) => {
-            console.log(
-                // res.val.toXDR('base64')
+            // console.log(
+            //     // res.val.toXDR('base64')
 
-                // 'Block key size', val.contractData().key().toXDR().length,
-                // 'Block val size', val.contractData().val().toXDR().length
+            //     // 'Block key size', val.contractData().key().toXDR().length,
+            //     // 'Block val size', val.contractData().val().toXDR().length
 
-                // 'Key size', res.key.toXDR().length,
-                // 'Val size', res.val.toXDR().length,
+            //     // 'Key size', res.key.toXDR().length,
+            //     // 'Val size', res.val.toXDR().length,
 
-                res.key.contractData().key().toXDR().length,
-                res.val.contractData().val().toXDR().length,
-                // res.val.contractData().key().toXDR().length,
-                // res.val.contractData().val().toXDR().length,
-            );
+            //     res.key.contractData().key().toXDR().length,
+            //     res.val.contractData().val().toXDR().length,
+            //     // res.val.contractData().key().toXDR().length,
+            //     // res.val.contractData().val().toXDR().length,
+            // );
 
             block = scValToNative(res.val.contractData().val())
         })
