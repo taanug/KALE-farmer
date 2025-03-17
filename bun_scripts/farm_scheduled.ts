@@ -66,7 +66,8 @@ async function run(): Promise<void> {
   // Check if there's time available to farm on this block
   if (
     block?.timestamp &&
-    new Date().getTime() - blockTimestampToMs(block.timestamp) <= 60 * 1000
+    !state.isPlanted &&
+    new Date().getTime() - blockTimestampToMs(block.timestamp) >= 4 * 60 * 1000
   ) {
     console.log("Not enough time to plant on this block.");
     scheduleNextCheck(block.timestamp);
