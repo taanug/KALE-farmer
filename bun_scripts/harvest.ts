@@ -1,5 +1,6 @@
 import { Api } from "@stellar/stellar-sdk/minimal/rpc";
 import { contract, getIndex, readINDEX, send, writeINDEX } from "./utils";
+import { log } from "./console-utils";
 
 // TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested
 
@@ -60,7 +61,7 @@ async function runHarvest(index: number) {
 
 export async function harvestSingleBlock(index: number) {
   if(index === 0) return 
-  console.log(`Harvesting block ${index}`);
+  log.harvest(`Harvesting block ${index}`);
 
   const at = await contract.harvest({
     farmer: Bun.env.FARMER_PK,
@@ -87,7 +88,7 @@ export async function harvestSingleBlock(index: number) {
     const leafCount = Math.ceil(reward);
     const kales = "🥬".repeat(leafCount);
 
-    console.log(
+    log.harvest(
       `Successfully harvested block ${index}, enjoy your kales! ${kales} (${reward})`,
     );
   }

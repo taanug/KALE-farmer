@@ -3,12 +3,14 @@ import { contract, farmerSigner, getContractData, send } from "./utils";
 import { Keypair } from "@stellar/stellar-sdk/minimal";
 import { Api } from "@stellar/stellar-sdk/minimal/rpc";
 import { harvestSingleBlock } from "./harvest";
+import chalk from "chalk";
+import { visual, log, formatDuration } from "./console-utils";
 
 // Constants for magic numbers
 const WORK_DELAY_MINUTES = 4.5; //adjust this value to let kales ripen for more/less time
 const CHECK_DELAY_MINUTES = 5;
 const MAX_ERRORS = 12;
-const RETRY_DELAY_MS = 5000;
+const RETRY_DELAY_MS = 10000;
 
 // State management
 interface FarmerState {
@@ -35,52 +37,65 @@ const state: FarmerState = {
  * Main function that orchestrates the farming process
  */
 async function run(): Promise<void> {
+  if (state.previousBlockIndex === 0) {
+    showStartupBanner();
+  }
+
   if (state.errorCount > MAX_ERRORS) {
-    console.log("Too many errors, exiting");
+    log.error(`Too many errors (${state.errorCount}/${MAX_ERRORS}), exiting`);
     process.exit(1);
   }
 
-  const { index, block, pail } = await getContractData();
-  const entropy = block?.entropy
-    ? block.entropy.toString("hex")
-    : Buffer.alloc(32).toString("hex");
+  try {
+    const { index, block, pail } = await getContractData();
+    const entropy = block?.entropy
+      ? block.entropy.toString("hex")
+      : Buffer.alloc(32).toString("hex");
 
-  // If there's a new block
-  if (index !== state.previousBlockIndex) {
-    console.log(` █  Found a new block at ${index}`);
+    // If there's a new block
+    if (index !== state.previousBlockIndex) {
+      log.block(`Found a new block at ${index}`);
+      visual.separator();
 
-    if (state.workerProcess) {
-      state.workerProcess.kill();
-      state.workerProcess = undefined;
+      if (state.workerProcess) {
+        log.info("Terminating previous worker process");
+        state.workerProcess.kill();
+        state.workerProcess = undefined;
+      }
+
+      state.isPlanted = !!pail?.sequence || !!pail?.stake;
+      state.hasWorked = !!pail?.gap || !!pail?.zeros;
+      state.errorCount = 0;
+
+      if (!state.isPlanted && !state.isPlanting) await plant();
+      await harvestSingleBlock(state.previousBlockIndex);
+      state.previousBlockIndex = index;
     }
 
-    state.isPlanted = !!pail?.sequence || !!pail?.stake;
-    state.hasWorked = !!pail?.gap || !!pail?.zeros;
-    state.errorCount = 0;
+    // Check if there's time available to farm on this block
+    if (
+      block?.timestamp &&
+      !state.isPlanted &&
+      new Date().getTime() - blockTimestampToMs(block.timestamp) >=
+        4 * 60 * 1000
+    ) {
+      console.log("Not enough time to plant on this block.");
+      scheduleNextCheck(block.timestamp);
+      return;
+    }
 
     if (!state.isPlanted && !state.isPlanting) await plant();
-    await harvestSingleBlock(state.previousBlockIndex);
-    state.previousBlockIndex = index;
-  }
 
-  // Check if there's time available to farm on this block
-  if (
-    block?.timestamp &&
-    !state.isPlanted &&
-    new Date().getTime() - blockTimestampToMs(block.timestamp) >= 4 * 60 * 1000
-  ) {
-    console.log("Not enough time to plant on this block.");
-    scheduleNextCheck(block.timestamp);
-    return;
-  }
+    if (block?.timestamp) {
+      if (!state.hasWorked && !state.isWorking)
+        scheduleWork(block.timestamp, index, entropy);
 
-  if (!state.isPlanted && !state.isPlanting) await plant();
-
-  if (block?.timestamp) {
-    if (!state.hasWorked && !state.isWorking)
-      scheduleWork(block.timestamp, index, entropy);
-
-    scheduleNextCheck(block.timestamp);
+      scheduleNextCheck(block.timestamp);
+    }
+  } catch (error) {
+    log.error(`Somethin unexpected happened: ${(error as Error).message}`);
+    state.errorCount++;
+    setTimeout(run, RETRY_DELAY_MS);
   }
 }
 
@@ -90,7 +105,7 @@ async function run(): Promise<void> {
 async function bootProc(index: number, entropy: string): Promise<void> {
   state.isWorking = true;
 
-  console.log(" 🚜 Working...");
+  log.work("Working...");
 
   state.workerProcess = Bun.spawn(
     [
@@ -153,7 +168,7 @@ async function readStream(
 
     if (Api.isSimulationError(transaction.simulation!)) {
       if (transaction.simulation.error.includes("Error(Contract, #7)")) {
-        console.log("Already worked");
+        log.work("Already worked");
       } else {
         console.error("Work Error:", transaction.simulation.error);
         state.errorCount++;
@@ -161,8 +176,8 @@ async function readStream(
       }
     } else {
       await send(transaction);
-      console.log(
-        ` 🚜 Nice work! Kales has been ripening for ${transaction.result} days, and you've found ${countZeros} magic seeds`,
+      log.work(
+        `Nice work! Kales has been ripening for ${transaction.result} days, and you've found ${countZeros} magic seeds`,
       );
     }
 
@@ -178,7 +193,7 @@ async function readStream(
  */
 async function plant(): Promise<void> {
   state.isPlanting = true;
-  console.log(" 🌱 Planting...");
+  log.plant("Planting seeds...");
 
   // TODO: dynamic stake amount
   const transaction = await contract.plant({
@@ -188,7 +203,7 @@ async function plant(): Promise<void> {
 
   if (Api.isSimulationError(transaction.simulation!)) {
     if (transaction.simulation.error.includes("Error(Contract, #8)")) {
-      console.log("Already planted");
+      log.plant("Already planted");
     } else {
       console.error("Plant Error:", transaction.simulation.error);
       state.errorCount++;
@@ -202,7 +217,7 @@ async function plant(): Promise<void> {
 
     await send(transaction);
 
-    console.log(" 🌱 Successfully planted!");
+    log.plant("Successfully planted!");
   }
 
   state.isPlanted = true;
@@ -233,16 +248,14 @@ function scheduleWork(
   const targetTimeMs = blockTimeMs + WORK_DELAY_MINUTES * 60 * 1000;
   const waitTimeMs = Math.max(0, targetTimeMs - currentTimeMs);
 
-  console.log(
-    `Current block time: ${new Date(blockTimeMs).toLocaleTimeString()}`,
-  );
-  console.log(
-    `Scheduling work in ${waitTimeMs}ms (at ${new Date(targetTimeMs).toLocaleTimeString()})`,
+  log.info(`Current block time: ${new Date(blockTimeMs).toLocaleTimeString()}`);
+  log.schedule(
+    `Next work in ${formatDuration(waitTimeMs)} (at ${new Date(targetTimeMs).toLocaleTimeString()})`,
   );
 
   // Schedule the action
   setTimeout(() => {
-    console.log("Executing scheduled work");
+    log.work("Starting working process");
     bootProc(index, entropy);
   }, waitTimeMs);
 }
@@ -259,7 +272,7 @@ function scheduleNextCheck(blockTimestamp: number | bigint): void {
 
   if (targetTimeMs < currentTimeMs) {
     setTimeout(() => {
-      console.log("Waiting for a new block...");
+      log.info("Waiting for a new block...");
       run();
     }, RETRY_DELAY_MS);
     return;
@@ -268,15 +281,33 @@ function scheduleNextCheck(blockTimestamp: number | bigint): void {
   // Calculate how long to wait from now
   const waitTimeMs = Math.max(0, targetTimeMs - currentTimeMs);
 
-  console.log(
-    `Scheduling next check in ${waitTimeMs}ms (at ${new Date(targetTimeMs).toLocaleTimeString()})`,
+  log.schedule(
+    `Next check in ${formatDuration(waitTimeMs)} (at ${new Date(targetTimeMs).toLocaleTimeString()})`,
   );
+  visual.separator();
 
   // Schedule the action
   setTimeout(() => {
-    console.log("Executing scheduled check");
+    log.schedule("Executing scheduled check");
     run();
   }, waitTimeMs);
+}
+
+function showStartupBanner(): void {
+  console.clear();
+  console.log(
+    chalk.green(`
+    🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬
+    🥬                               🥬
+    🥬     Starting Kale Farmer      🥬
+    🥬     Work Delay: ${WORK_DELAY_MINUTES}min        🥬
+    🥬     Check Delay: ${RETRY_DELAY_MS}min         🥬
+    🥬     Farmer: ${Bun.env.FARMER_PK.substring(0, 8)}...       🥬
+    🥬                               🥬
+    🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬
+  `),
+  );
+  visual.separator();
 }
 
 run();

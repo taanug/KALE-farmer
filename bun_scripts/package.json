@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^13.1.0",
+    "chalk": "^5.4.1",
     "kale-sc-sdk": "file:../ext/kale-sc-sdk"
   }
 }
