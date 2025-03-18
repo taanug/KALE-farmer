@@ -79,7 +79,7 @@ async function run(): Promise<void> {
       new Date().getTime() - blockTimestampToMs(block.timestamp) >=
         4 * 60 * 1000
     ) {
-      console.log("Not enough time to plant on this block.");
+      log.info("Not enough time to plant on this block.");
       scheduleNextCheck(block.timestamp);
       return;
     }
@@ -96,6 +96,15 @@ async function run(): Promise<void> {
     log.error(`Something unexpected happened: restarting process`);
     state.errorCount++;
     state.previousBlockIndex = 0;
+    state.isWorking = false;
+    state.isPlanting = false;
+    state.isPlanted = false;
+    state.hasWorked = false;
+    if (state.workerProcess) {
+      log.info("Terminating previous worker process");
+      state.workerProcess.kill();
+      state.workerProcess = undefined;
+    }
     setTimeout(run, RETRY_DELAY_MS);
   }
 }
