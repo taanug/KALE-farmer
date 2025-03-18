@@ -93,8 +93,9 @@ async function run(): Promise<void> {
       scheduleNextCheck(block.timestamp);
     }
   } catch (error) {
-    log.error(`Somethin unexpected happened: ${(error as Error).message}`);
+    log.error(`Something unexpected happened: restarting process`);
     state.errorCount++;
+    state.previousBlockIndex = 0;
     setTimeout(run, RETRY_DELAY_MS);
   }
 }
@@ -301,7 +302,7 @@ function showStartupBanner(): void {
     🥬                               🥬
     🥬     Starting Kale Farmer      🥬
     🥬     Work Delay: ${WORK_DELAY_MINUTES}min        🥬
-    🥬     Check Delay: ${RETRY_DELAY_MS}min         🥬
+    🥬     Check Delay: ${RETRY_DELAY_MS}ms      🥬
     🥬     Farmer: ${Bun.env.FARMER_PK.substring(0, 8)}...       🥬
     🥬                               🥬
     🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬 🥬
