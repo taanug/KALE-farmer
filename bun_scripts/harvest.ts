@@ -60,7 +60,7 @@ async function runHarvest(index: number) {
 }
 
 export async function harvestSingleBlock(index: number) {
-  if(index === 0) return 
+  if (index === 0) return;
   log.harvest(`Harvesting block ${index}`);
 
   const at = await contract.harvest({
@@ -69,19 +69,13 @@ export async function harvestSingleBlock(index: number) {
   });
 
   if (Api.isSimulationError(at.simulation!)) {
-    // Don't log the error if...
-    if (
-      !(
-        at.simulation.error.includes("Error(Contract, #9)") || // PailMissing
-        at.simulation.error.includes("Error(Contract, #10)") || // WorkMissing
-        at.simulation.error.includes("Error(Contract, #11)") || // BlockMissing
-        at.simulation.error.includes("Error(Contract, #14)") // HarvestNotReady
-      )
-    ) {
-      console.error("Harvest Error:", at.simulation.error);
-    }
-  }
+    // "Error(Contract, #9)" // PailMissing
+    // "Error(Contract, #10)" // WorkMissing
+    // "Error(Contract, #11)" // BlockMissing
+    // "Error(Contract, #14)" // HarvestNotReady
 
+    log.error(`Harvest Error: ${ at.simulation.error }`);
+  } else {
     await send(at);
 
     const reward = Number(at.result) / 1e7;
@@ -92,3 +86,4 @@ export async function harvestSingleBlock(index: number) {
       `Successfully harvested block ${index}, enjoy your kales! ${kales} (${reward})`,
     );
   }
+}

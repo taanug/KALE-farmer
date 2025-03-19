@@ -7,8 +7,8 @@ import chalk from "chalk";
 import { visual, log, formatDuration } from "./console-utils";
 
 // Constants for magic numbers
-const WORK_DELAY_MINUTES = 4.5; //adjust this value to let kales ripen for more/less time
-const CHECK_DELAY_MINUTES = 5;
+const WORK_DELAY_MINUTES = 4.7; //adjust this value to let kales ripen for more/less time
+const CHECK_DELAY_MINUTES = 5.2;
 const MAX_ERRORS = 12;
 const RETRY_DELAY_MS = 10000;
 
@@ -180,7 +180,7 @@ async function readStream(
       if (transaction.simulation.error.includes("Error(Contract, #7)")) {
         log.work("Already worked");
       } else {
-        console.error("Work Error:", transaction.simulation.error);
+        log.error(`Work Error: ${transaction.simulation.error}`);
         state.errorCount++;
         return;
       }
