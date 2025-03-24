@@ -1,5 +1,6 @@
 import { Api } from "@stellar/stellar-sdk/minimal/rpc";
 import { contract, getIndex, readINDEX, send, writeINDEX } from "./utils";
+import { log } from "./console-utils";
 
 // TODO no need to harvest something A) we cannot harvest (too soon) or B) we've already harvested
 
@@ -56,4 +57,33 @@ async function runHarvest(index: number) {
         await Bun.sleep(500);
         return runHarvest(index);
     }
+}
+
+export async function harvestSingleBlock(index: number) {
+  if (index === 0) return;
+  log.harvest(`Harvesting block ${index}`);
+
+  const at = await contract.harvest({
+    farmer: Bun.env.FARMER_PK,
+    index,
+  });
+
+  if (Api.isSimulationError(at.simulation!)) {
+    // "Error(Contract, #9)" // PailMissing
+    // "Error(Contract, #10)" // WorkMissing
+    // "Error(Contract, #11)" // BlockMissing
+    // "Error(Contract, #14)" // HarvestNotReady
+
+    log.error(`Harvest Error: ${ at.simulation.error }`);
+  } else {
+    await send(at);
+
+    const reward = Number(at.result) / 1e7;
+    const leafCount = Math.ceil(reward);
+    const kales = "🥬".repeat(leafCount);
+
+    log.harvest(
+      `Successfully harvested block ${index}, enjoy your kales! ${kales} (${reward})`,
+    );
+  }
 }
