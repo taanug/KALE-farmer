@@ -6,6 +6,7 @@ import { Api } from '@stellar/stellar-sdk/minimal/rpc';
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined }
 let proc: Subprocess<"ignore", "pipe", "inherit"> | undefined
 let prev_index: number | undefined
+let harvested = false
 let planting = false
 let booting = false
 let planted = false
@@ -69,8 +70,12 @@ async function run() {
         prev_index = index
         planted = !!pail?.sequence || !!pail?.stake
         worked = !!pail?.gap || !!pail?.zeros
+        harvested = false
         errors = 0
+    }
 
+    else if (!harvested && timeDiff >= 30000) {
+        harvested = true;
         Bun.spawn(["bun", "harvest.ts"], {
             ipc(message) {
                 console.log(message);
@@ -105,7 +110,7 @@ async function bootProc(index: number, entropy: string, timeDiff: number) {
         await plant()
     }
 
-    if (proc || worked || timeDiff < 200000) // don't work till >= 4 minutes after block open
+    if (proc || worked)
         return
 
     console.log('Booting...', errors);

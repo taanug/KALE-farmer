@@ -1,4 +1,4 @@
-import { getContractData } from "./utils";
+import { getContractData } from "../bun_scripts/utils";
 
 const contract_data = await getContractData()
 
