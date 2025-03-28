@@ -11,6 +11,7 @@ import type Stream from "stream";
 let contractData: { index: number, block: Block | undefined, pail: Pail | undefined };
 let proc: ChildProcess | undefined;
 let prev_index: number | undefined;
+let harvested = false;
 let planting = false;
 let booting = false;
 let planted = false;
@@ -52,13 +53,19 @@ async function run() {
         prev_index = index;
         planted = !!pail?.sequence || !!pail?.stake;
         worked = !!pail?.gap || !!pail?.zeros;
+        harvested = false;
         errors = 0;
-
+    } 
+    
+    else if (!harvested && timeDiff >= 30000) {
+        harvested = true;
         spawn('node', ["--import", "./loader.mjs", "harvest.ts"], {
             stdio: ['ignore', 'inherit', 'inherit'],
             env: process.env
         })
-    } else {
+    }
+    
+    else {
         const minutes = Math.floor(timeDiff / 60000);
         const seconds = Math.floor((timeDiff % 60000) / 1000);
 
@@ -83,7 +90,7 @@ async function bootProc(index: number, entropy: string, timeDiff: number) {
         await plant();
     }
 
-    if (proc || worked || timeDiff < 200000) // don't work till >= 4 minutes after block open
+    if (proc || worked)
         return;
 
     console.log('Booting...', errors);
