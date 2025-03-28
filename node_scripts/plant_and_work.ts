@@ -57,7 +57,7 @@ async function run() {
         errors = 0;
     } 
     
-    else if (!harvested && timeDiff >= 30000) {
+    else if (!harvested && timeDiff >= 60000) {
         harvested = true;
         spawn('node', ["--import", "./loader.mjs", "harvest.ts"], {
             stdio: ['ignore', 'inherit', 'inherit'],

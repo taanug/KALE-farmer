@@ -74,7 +74,7 @@ async function run() {
         errors = 0
     }
 
-    else if (!harvested && timeDiff >= 30000) {
+    else if (!harvested && timeDiff >= 60000) {
         harvested = true;
         Bun.spawn(["bun", "harvest.ts"], {
             ipc(message) {
