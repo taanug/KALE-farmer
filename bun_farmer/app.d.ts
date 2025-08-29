@@ -82,6 +82,8 @@ interface FarmerState {
   farmingError: string;
   isWorking: boolean;
   bypassCheckTime: boolean;
+  workResult: any;
+  workLog: string;
 }
 
 // Function signatures

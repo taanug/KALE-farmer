@@ -40,7 +40,14 @@ const farmingLoop = async (state: FarmerState, socket?: net.Socket) => {
   setTimeout(() => farmingLoop(currentState, socket), checkEveryMs);
 };
 
+const runHarvest = ()=>spawn(['bun', 'harvest.ts'], 
+  (msg:any)=>{
+    updateLogs(msg);
+    log(msg) 
+  });
+
 const startFarming = async (state: FarmerState, socket?: net.Socket) => { 
+  runHarvest();
   fetchAndLogLaunchTubeJWTInfo().then(result => { launchTubeCredits = result; });
   void farmingLoop(state, socket);
   setInterval(()=>{
@@ -51,11 +58,7 @@ const startFarming = async (state: FarmerState, socket?: net.Socket) => {
     }
   }, 1000)
   setInterval(async () => {
-    spawn(['bun', 'harvest.ts'], 
-      (msg:any)=>{
-        updateLogs(msg);
-        log(msg) 
-      })
+      runHarvest();
       harvestStartTime = Date.now() + Number(Bun.env.HARVEST_EVERY_MS)
   }, Number(Bun.env.HARVEST_EVERY_MS) || 420000);
 };
@@ -79,7 +82,7 @@ const getStatus = (state: FarmerState) => {
     : hasWorked 
       ? (typeof hasWorked === 'string' 
         ? hasWorked 
-        : 'Done - This block was already farmed')
+        : 'Completed - This block was already farmed')
       : isWorking && !hasWorked
         ? "Kale farming in progress..."  
         : !hasPlanted && !hasWorked && !hasWorked
@@ -124,9 +127,9 @@ const removeHarvestedFromFarmingLog = ()=>{
 const getBlockTime = (status: string) => {
   return status?.includes("Failed") || status?.includes("Error") || status?.includes("Missed")
     ? "Error" 
-    : status?.includes('Harvesting') || (status?.includes('Done') && getHarvestTime(harvestStartTime).includes('-'))
+    : status?.includes('Harvesting') || (status?.includes('Completed') && getHarvestTime(harvestStartTime).includes('-'))
       ? 'Harvesting now'
-      : status?.includes('Done')
+      : status?.includes('Completed')
         ? `Harvesting in ${getHarvestTime(harvestStartTime)}`                
           : status?.includes('Harvested') 
             ? "Farming Complete"
@@ -190,7 +193,7 @@ if (process.env.DEBUG !== 'true') {
       log("Process exited, ending socket connection to farmerLog");
       socket.end(); // Explicitly close the socket
     });
-  }, 2000); // Wait for the new terminal to init
+  }, 5000); // Wait for the new terminal to init
 } else {
   startFarming(initialState);
 }

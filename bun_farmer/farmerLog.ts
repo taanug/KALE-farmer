@@ -41,7 +41,11 @@ export function displayTable(
     const visibleLogs = logEntries.slice(scrollOffset, scrollOffset + maxRows);
     return [
       ["Block", "Status", "Block Time"],
-      ...visibleLogs.map((key: any) => [key, logs[key].status || "N/A", logs[key].blockTime || "N/A"]),
+      ...visibleLogs.map((key: any, index: number) => [
+        key,
+        logs[key].status || "N/A",
+        index === 0 && logs[key].blockTime ? `\x1b[1m${logs[key].blockTime}\x1b[0m` : logs[key].blockTime || "N/A"
+      ]),
     ];
   };
 
@@ -57,7 +61,7 @@ export function displayTable(
   const renderTable = (state: TableState, launchTubeCredits: string, uptime: string): TableState => {
     let farmLogMap;
     let totalRows;
-    let newScrollOffset = state.scrollOffset;;
+    let newScrollOffset = state.scrollOffset;
       
     try{
       farmLogMap = dataSources[state.currentView]();
@@ -72,7 +76,6 @@ export function displayTable(
       log("renderTable Error", msg)
     }
     return { ...state, scrollOffset: newScrollOffset };
-
   };
 
   const reduceState = (state: TableState, action: string) => {
@@ -86,7 +89,7 @@ export function displayTable(
       case "up":
         return state.scrollOffset > 0 ? { ...state, scrollOffset: state.scrollOffset - 1, autoScroll: false } : state;
       case "down":
-        return state.scrollOffset + maxRows < totalRows ? { ...state, scrollOffset: state.scrollOffset + 1, autoScroll: false } : state; // Fixed: Added autoScroll: false
+        return state.scrollOffset + maxRows < totalRows ? { ...state, scrollOffset: state.scrollOffset + 1, autoScroll: false } : state;
       case "quit":
         process.exit(0);
         return state;
@@ -125,23 +128,18 @@ export function displayTable(
         farmingLogs = farmingLogsTemp;
         harvestLogs = harvestLogsTemp;
         state = stateTemp;
-
-        // ignore for now, it will fix itself on the next update
-        //logError('-------------------farmerLog error: onData', data)
       }
     });
-    // Exit when the parent closes the connection
     socket.on("end", () => {
       log("Parent process disconnected, exiting...");
-      process.exit(0); // Closes the child process and Terminal window
+      process.exit(0);
     });
     socket.on("close", (err) => {
       logError("--------------IPC Server close:", err);
-      //process.exit(1)
     })
     socket.on("error", (err) => {
       logError("Socket error:-----------------------", err.message);
-      process.exit(1); // Exit on error, e.g., if parent crashes unexpectedly
+      process.exit(1);
     });
   });
   server.listen(`/tmp/kalepail-ipc-${Bun.env.FARMER_PK}.sock`);
@@ -156,7 +154,7 @@ export function displayTable(
 
 if (import.meta.main) {
   displayTable(
-    [() => ({}), () => ({})], // Dummy initial dataSources, updated via IPC
+    [() => ({}), () => ({})],
     undefined,
     { viewNames: ["Farming", "Harvesting"] },
     "Loading LaunchTube data...", 

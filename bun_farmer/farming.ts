@@ -47,10 +47,17 @@ export const runCycle: RunCycleFn = async (state: FarmerState): Promise<FarmerSt
       shouldFetchNextBlock: true,
       farmingError: '',
       isWorking: false,
+      workLog: '',
+      workResult: undefined
     };
     return newState;
   }
   updatedState = {...updatedState, shouldFetchNextBlock: false}
+  // const blockIsOlderThanAMinute = isBlockTimeGreater(state.contractData.block,60000);
+  // if(!blockIsOlderThanAMinute){
+  //   log('Waiting until block is a minute old to plant')
+  // }else 
+  
   if(!state.hasPlanted){
     log(`Waiting ${Bun.env.PLANT_DELAY_MS}ms to plant...`)
     await sleep(Number(Bun.env.PLANT_DELAY_MS) || 0);
@@ -64,19 +71,19 @@ export const runCycle: RunCycleFn = async (state: FarmerState): Promise<FarmerSt
   return updatedState;
 };
 
+
 const startWork: StartWorkFn = async (
   state: FarmerState,
   index: number,
   entropy: string,
 ): Promise<FarmerState> => {
-  const workWaitTime = Number(Bun.env.WORK_DELAY_MS) || 240000;
-  if (!isBlockTimeGreater(state.contractData.block, workWaitTime) ) {
+  if (!isBlockTimeGreater(state.contractData.block, Number(Bun.env.WORK_DELAY_MS) || 240000) || state.hasWorked) {
     return state;
   }
 
   let farmerProcess;
   if(!state.process){
-    if(!state.isWorking){
+    if(!state.isWorking && !state.workResult){
       const updatedState = {...state, isWorking: true, farmingError: ''}
       return {...updatedState}
     }
@@ -99,7 +106,7 @@ const startWork: StartWorkFn = async (
   }
 
   let currentState = { ...state, process: farmerProcess ? farmerProcess : state.process};
-  if (currentState.process.stdout) {
+  if (currentState.process.stdout && !currentState.workResult) {
     const output = await Bun.readableStreamToText(currentState.process.stdout);
     if (output) {
       //await Bun.write(Bun.stdout, output);
@@ -110,22 +117,20 @@ const startWork: StartWorkFn = async (
         try {
           const [nonce, hash] = JSON.parse(lastLine);
           const zeroCount = hash.match(/^0*/)?.[0].length ?? 0;
-          const workResult = await contract.work({ farmer: Bun.env.FARMER_PK || '', hash: Buffer.from(hash, 'hex'), nonce: BigInt(nonce) });
+          
+            const workResult = await contract.work({ farmer: Bun.env.FARMER_PK || '', hash: Buffer.from(hash, 'hex'), nonce: BigInt(nonce) });
 
-          if (Api.isSimulationError(workResult.simulation)) {
-            return handleError(currentState, workResult.simulation.error, 'Simulation Error');
-          }
-          let sendResult;
-          try{
-            log('Sending Work...')
-            sendResult = await send(workResult);
-          } catch (msg){
-            return handleError(currentState, JSON.stringify(msg), 'Work Error');
-          }
-          const workLog = `Done - Gaps: ${workResult.result} Zeros: ${zeroCount} ${hashrate}`;
-          log(workLog);
-          // todo: add work result stats to new property workPerformance
-          return { ...currentState, hasWorked: workLog, process: undefined, shouldFetchNextBlock: false, hasPlanted: true, farmingError: '' };
+            if (Api.isSimulationError(workResult.simulation)) {
+              return handleError(currentState, workResult.simulation.error, 'Simulation Error');
+            }
+
+            const workLog = `Gaps: ${workResult.result} Zeros: ${zeroCount} ${hashrate}`;
+            currentState = {...currentState, workResult, workLog,  process: undefined, shouldFetchNextBlock: false, hasPlanted: true, farmingError: ''} ;
+
+            log(workLog);
+            // todo: add work result stats to new property workPerformance
+            return sendWork(currentState);
+        
         } catch (err:any) {
             return handleError(currentState, err, 'Stream Error')
         }
@@ -135,6 +140,25 @@ const startWork: StartWorkFn = async (
   return currentState;
 };
 
+
+const sendWork = async (state: FarmerState): Promise<FarmerState> => {
+  let sendResult;
+  let retries = 5;
+if(!state.workResult){ return handleError(state, JSON.stringify("Cannot send empty work result!"), 'Work Error');}
+  while (retries > 0) {
+    try {
+      log(`Sending Work...attempt ${6 - retries}`);
+      sendResult = await send(state.workResult);
+      break;
+    } catch (error) {
+      retries--;
+      if (retries === 0) {
+        return handleError(state, JSON.stringify(error), 'Work Error');
+      }
+    }
+  }
+  return {...state, hasWorked: state.workLog + ' Completed'}
+}
 const plant: PlantFn = async (state: FarmerState): Promise<FarmerState> => {
   let plantResult;
   try{
@@ -173,7 +197,9 @@ const handleError: HandleErrorFn = (state: FarmerState, error: string, prefix: s
     const errorMessage = error?.includes(planted) ? 'Already planted' : 'Work already completed';
     workError = `${prefix}: ${errorMessage}`;
     updatedState =  { ...state, hasPlanted: error?.includes(planted), farmingError: workError, hasWorked: error?.includes(worked), shouldFetchNextBlock: true, isWorking: false};
-  } else if (prefix === "Stream Error" || prefix === "Simulation Error" || prefix === 'Missed Block' || prefix === 'Work Error'){
+  } else if (prefix === 'Work Error' || prefix === 'Simulation Error'){
+    updatedState = { ...state, process: undefined, farmingError: prefix, shouldFetchNextBlock: true, hasPlanted: true, hasWorked: false, isWorking: false};
+  } else if (prefix === "Stream Error" || prefix === 'Missed Block'){
     updatedState = { ...state, farmingError: prefix, shouldFetchNextBlock: true, hasPlanted: true, hasWorked: true, isWorking: true};
   }else {
     logError(`UNKNOWN ---------------- ${prefix}:`, error);
